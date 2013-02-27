@@ -1,0 +1,38 @@
+# -*- mode: Makefile; tab-width: 8 -*- 
+#
+# Makevars for LMCLUS 
+#
+# Copyright (C) 2013 Art Diky
+
+## $(SHLIB) is the usual default target that is built automatically from all source 
+## files in this directory. userLibrary is an additional target for the second library
+## that will be installed in ../inst/lib$(R_ARCH) and which users can link against.
+
+CLINK_CPPFLAGS=-std=c++11
+
+all: 	$(SHLIB) userLibrary 
+
+## we place it inside the inst/ directory so that it gets installed by the package
+USERDIR =	.
+
+USERLIB	=	liblmclusr$(DYLIB_EXT)
+MISCLIB =   lmclus$(DYLIB_EXT)
+
+PKG_CPPFLAGS += -I../inst/include/
+PKG_CPPFLAGS += -I../inst/include/armadillo
+PKG_CPPFLAGS += -I../inst/include/cpplog
+PKG_CPPFLAGS += -Wno-deprecated
+
+userLibrary: 	$(USERLIB)
+		-@if test ! -e $(USERDIR)$(R_ARCH); then mkdir -p $(USERDIR)$(R_ARCH); fi
+		rm $(MISCLIB)
+
+$(USERLIB): 	$(OBJECTS)
+		$(SHLIB_CXXLD) -o $(USERLIB) $(OBJECTS) $(SHLIB_CXXLDFLAGS) $(ALL_LIBS)
+		@if test -e "/usr/bin/install_name_tool"; then /usr/bin/install_name_tool -id $(R_PACKAGE_DIR)/lib$(R_ARCH)/$(USERLIB) $(USERLIB); fi
+
+.PHONY: 	all clean userLibrary 
+
+clean:
+		rm -f $(OBJECTS) $(SHLIB) $(USERLIB)
+

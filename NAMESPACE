@@ -1,0 +1,5 @@
+useDynLib(liblmclusr)
+export(lmclusPure, lmclus)
+S3method(lmclus, default)
+exportClass(lmclus.params)
+

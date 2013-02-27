@@ -1,0 +1,13 @@
+Package: lmclus
+Version: 1.0.0
+Date: 2013-2-20
+Title: Linear manifold clustering algorithm 
+Author: Rave Harpaz, Art Diky
+Maintainer: Art Diky <adiky@gc.cuny.edu> 
+Depends: R (>= 2.15.0)
+Imports: methods
+Description: A linear manifold clustering algorithm based on the paper
+            "Linear manifold clustering in high dimensional spaces by stochastic search", 
+            Pattern Recognition (2007), vol. 40(10), pp 2672-2684.
+ByteCompile: yes
+License: LGPL-3
