@@ -5,4 +5,4 @@ add_library(lmclus histogram.cpp Kittler.cpp lmclus.cpp)
 add_library(lmclusr SHARED lmclusr.cpp)
 
 # link with library
-target_link_libraries(lmclusr lmclus ${BLAS_LIBS})
+target_link_libraries(lmclusr lmclus ${BLAS_LIBS} ${R_LIBRARIES})

@@ -67,16 +67,13 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
         Rprintf("%s", log.getString().c_str());
     
     Rprintf("Clusters found: %d\n", labels.size());
-    //Rprintf("thresholds found: %d\n", thresholds.size());
-    //Rprintf("clusterDims found: %d\n", clusterDims.size());
-    //Rprintf("basises found: %d\n", basises.size());
     
     SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels;
     
      // Thresholds
     PROTECT(Rthresholds = allocVector(REALSXP,thresholds.size())); nprotect++;
     for (i = 0; i < thresholds.size(); ++i)
-	REAL(Rthresholds)[i] = thresholds[i];
+        REAL(Rthresholds)[i] = thresholds[i];
     
     // Dimensions
     PROTECT(RclusterDims = allocVector(INTSXP,thresholds.size())); nprotect++;
@@ -88,9 +85,9 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     for (i = 0; i < labels.size(); ++i){
         SEXP lbls;
         PROTECT(lbls = allocVector(INTSXP,labels[i].n_elem)); nprotect++;
-	for (j = 0; j < labels[i].n_elem; ++j)
-	    INTEGER(lbls)[j] = labels[i][j];
-	SET_VECTOR_ELT(Rlabels, i, lbls);
+        for (j = 0; j < labels[i].n_elem; ++j)
+            INTEGER(lbls)[j] = labels[i][j];
+        SET_VECTOR_ELT(Rlabels, i, lbls);
     }
     
     // Result list
@@ -113,9 +110,8 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     return Return_lst;
 
     } catch(...) { 
-	Rprintf("Log:\n%s", log.getString().c_str());
+        Rprintf("Log:\n%s", log.getString().c_str());
         ::Rf_error( "c++ exception (unknown reason)" ); 
-	//::Rf_error( log.getString().c_str() );
     }
     return R_NilValue;
 }

@@ -5,16 +5,26 @@ message(STATUS "Configuring LMCLUS")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -fPIC -Wno-deprecated -O2")
+# gcc flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-deprecated -O2")
 
-include_directories(inst/include/armadilo)
+include_directories(inst/include/armadillo)
 include_directories(inst/include/cpplog)
 include_directories(inst/include/)
 
-find_package(MKL REQUIRED)
-include_directories(${MKL_INCLUDE_DIRS})
-link_directories(${MKL_LIBRARIES})
-set(BLAS_LIBS ${MKL_LIBRARIES})
+if(NOT WIN32)
+	find_package(MKL REQUIRED)
+	include_directories(${MKL_INCLUDE_DIRS})
+	link_directories(${MKL_LIBRARIES})
+	set(BLAS_LIBS ${MKL_LIBRARIES})
+	
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+endif()
+
+if(WIN32)
+	link_directories(${CMAKE_SOURCE_DIR}/contrib/libs)
+	set(BLAS_LIBS blas lapack)
+endif()
 
 #find_package(Armadillo REQUIRED)
 #include_directories(${ARMADILLO_INCLUDE_DIRS})
