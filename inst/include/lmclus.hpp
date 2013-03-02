@@ -37,7 +37,6 @@
 #include <iostream>
 #include <armadillo>
 
-#include "histogram.h"
 #include "separation.hpp"
 #include "Kittler.h"
 
@@ -102,9 +101,8 @@ private:
     Separation findBestSeparation(const arma::mat &data, const int SubSpaceDim, const Parameters &para);
     //std::pair<arma::uvec, arma::uvec> findBestPoints(const arma::mat &data, const Separation &best_sep);
     
-    Kittler findThreshold( const Histogram &H);
     arma::mat findBestPoints(const arma::mat &data, const Separation &sep, arma::mat &nonClusterPoints);
-    std::vector<double> determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, const Parameters &para);
+    arma::vec determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, const Parameters &para);
     
     unsigned int randromNumber();
     

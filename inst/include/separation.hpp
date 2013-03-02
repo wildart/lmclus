@@ -2,7 +2,6 @@
 # define SEP_H
 
 #include <armadillo>
-#include "histogram.h"
 #include <iostream>
 #include <vector>
 
@@ -29,7 +28,7 @@ public:
 	double get_threshold () const {
 		return threshold;
 	}
-	Histogram get_histo() const {
+	arma::uvec get_histo() const {
 		return histo;
 	}
 	arma::mat get_projection () const {
@@ -42,7 +41,7 @@ public:
 		criteria = -1;
 	}
 	
-	Separation(double w, double d, double thres, const arma::rowvec &org ,const arma::mat &p, Histogram &h):
+	Separation(double w, double d, double thres, const arma::rowvec &org ,const arma::mat &p, arma::uvec &h):
 		origin(org),projection(p),sep_width(w),sep_depth(d),threshold(thres),histo(h)
 	{
 		criteria=sep_width*sep_depth;
@@ -59,7 +58,7 @@ private:
 	double sep_width;                     // separation width
 	double sep_depth;                     // separation depth
 	double threshold;                     // histogram's threshold
-	Histogram histo;                      // the histogram kittler's algorithm is applied on		
+	arma::uvec histo;                      // the histogram kittler's algorithm is applied on		
 	double criteria;                      // goodness of separation (width*depth)
 
 };

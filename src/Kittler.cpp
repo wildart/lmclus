@@ -10,9 +10,9 @@
  *        RHmin, RHmax - range of values in histogram.
  * output: false - histogram is unimodal and cannot be thresholded, true - histrogram is bimodal can be thresholded
  */
-bool Kittler::FindThreshold(const vector<double>& H, double RHmin, double RHmax)
+bool Kittler::FindThreshold(const arma::vec &H, double RHmin, double RHmax)
 {
-	int N = H.size();
+	int N = H.n_elem;
 	vector<double> P1(N,0);           // P1[i]- prior to the left of threshold i (including bin i)
 	vector<double> P2(N,0);           // P2[i]- prior to the right of threshold i
 	vector<double> Mu1(N,0);

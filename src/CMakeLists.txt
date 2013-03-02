@@ -1,5 +1,5 @@
 # build library
-add_library(lmclus histogram.cpp Kittler.cpp lmclus.cpp)
+add_library(lmclus Kittler.cpp lmclus.cpp)
 
 # build R library
 add_library(lmclusr SHARED lmclusr.cpp)
