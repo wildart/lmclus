@@ -40,6 +40,7 @@
 #include <limits>
 #include <chrono>
 
+#include "Kittler.h"
 #include "lmclus.hpp"
 
 #define EPS 1e-8
