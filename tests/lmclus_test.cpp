@@ -79,7 +79,7 @@ int main ( int argc, char *argv[] )
     }
     
     // Set parameters from ini-file
-    Parameters params;
+    clustering::lmclus::Parameters params;
     params.MAX_DIM = static_cast<int>(ini.GetLongValue(SECTION, "MAX_DIM", 2));
     params.NUM_OF_CLUS = static_cast<int>(ini.GetLongValue(SECTION, "NUM_OF_CLUS", 2));
     params.LABELED_DATA = static_cast<int>(ini.GetLongValue(SECTION, "LABELED_DATA", 1));
@@ -116,7 +116,7 @@ int main ( int argc, char *argv[] )
     TEST(log, params.MAX_DIM < static_cast<int>(data.n_cols), "Linear manifold dimension must be less than the dimension of the data !!!")
 
     // Process data
-    LMCLUS lmclus(log);
+    clustering::lmclus::LMCLUS lmclus(log);
     std::vector<arma::uvec> labels;
     std::vector<double> thresholds; 
     std::vector<arma::mat> basises; 

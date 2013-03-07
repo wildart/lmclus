@@ -47,7 +47,7 @@
 
 /* Random number generator
  */
-unsigned int LMCLUS::randromNumber()
+unsigned int clustering::lmclus::LMCLUS::randromNumber()
 {
     return dist(engine);
 }
@@ -61,7 +61,7 @@ unsigned int LMCLUS::randromNumber()
  * of error that does not exceed an error bound. 3 different types of heuristics may be used
  * depending on LMCLUS's input parameters.
  */
-int LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const Parameters &para)
+int clustering::lmclus::LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const Parameters &para)
 {
     double k=static_cast<double>(para.NUM_OF_CLUS);
 
@@ -106,7 +106,7 @@ int LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const 
  * that the same point is not sampled twice. the function will return
  * a index vector, specifying the index of the sampled points.
  */
-arma::uvec LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
+arma::uvec clustering::lmclus::LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
 {
     size_t NumOfPoints = LMDim+1, empty = data.n_rows+1;
     arma::uvec point_index(NumOfPoints);  
@@ -157,7 +157,7 @@ arma::uvec LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
  * the same integer is not sampled twice. the function returns an intger vector
  * containing the sampled integers.
  */
-arma::uvec LMCLUS::sample(const int n, const int k)
+arma::uvec clustering::lmclus::LMCLUS::sample(const int n, const int k)
 {
     arma::uvec index = arma::zeros<arma::uvec>(n);
     arma::uvec SampleIndex(k);
@@ -190,7 +190,7 @@ arma::uvec LMCLUS::sample(const int n, const int k)
  * is the transpose of the basis matrix. the function also returns the origin
  * of the basis vectors.
  */
-std::pair<arma::rowvec, arma::mat> LMCLUS::formBasis(const arma::mat &points)
+std::pair<arma::rowvec, arma::mat> clustering::lmclus::LMCLUS::formBasis(const arma::mat &points)
 {
     arma::mat B_T(points.n_rows-1, points.n_cols);   // create the B (Basis) transpose matrix
     
@@ -225,7 +225,7 @@ std::pair<arma::rowvec, arma::mat> LMCLUS::formBasis(const arma::mat &points)
  * || b_i || : is the norm (length of the vector)
  * to calculate b_i use : b_i = ( m_i - sum( (b_j'm_i)b_j ) ) / || b_i ||
  */
-arma::mat LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
+arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
 {
     arma::mat B( M.n_rows, M.n_cols );       // create an uninitialized orthogonal basis matrix
 
@@ -262,7 +262,7 @@ arma::mat LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
  * (the distance will not be determined for points that were already sampled to create the linear manifold).
  * depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
  */
-arma::vec LMCLUS::determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, 
+arma::vec clustering::lmclus::LMCLUS::determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, 
                                                const Parameters &para)
 {
     arma::mat data1;
@@ -311,7 +311,7 @@ arma::vec LMCLUS::determineDistances(const arma::mat &data, const arma::mat &P, 
  * 2- create distance histograms of the data points to each trial linear manifold
  * 3- of all the linear manifolds sampled select the one whose associated distance histogram shows the best separation between to modes.
  */
-Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, const Parameters &params)
+clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, const Parameters &params)
 {
     int DataSize = data.n_rows;
     int FullSpcDim = data.n_cols;
@@ -372,7 +372,7 @@ Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, c
 }
 
 
-void LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
+void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
 		     std::vector<arma::uvec> &labels, std::vector<double> &thresholds, std::vector<arma::mat> &basises, std::vector<int> &clusterDims)
 {
     // Initialize random generator

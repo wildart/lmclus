@@ -17,9 +17,9 @@ MISCLIB =   lmclus$(DYLIB_EXT)
 
 PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 
-PKG_CPPFLAGS += -I../inst/include/
-PKG_CPPFLAGS += -I../inst/include/armadillo
-PKG_CPPFLAGS += -I../inst/include/cpplog
+PKG_CPPFLAGS += -I../include/
+PKG_CPPFLAGS += -I../include/armadillo
+PKG_CPPFLAGS += -I../include/cpplog
 PKG_CPPFLAGS += -Wno-deprecated
 
 userLibrary: 	$(USERLIB)
