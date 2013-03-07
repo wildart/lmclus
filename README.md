@@ -24,7 +24,7 @@ Dependencies
 
 * gcc (>= 4.7.2)
 * R (>= 2.15.0)
-* mkl (optional)
+* BLAS (or MKL optional)
 
 Licence
 =======
