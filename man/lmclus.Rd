@@ -66,6 +66,6 @@ lmclus(X, \dots)
     print(res)
     
     # get cluster 1 data points
-    c1_idx <- unlist(res$clusters[1])
+    c1_idx <- res$clusters[[1]]
     ds_c1 <- ds[c1_idx, ]
 }
