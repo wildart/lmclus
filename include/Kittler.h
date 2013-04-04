@@ -34,6 +34,7 @@
 
 #include <vector>
 #include <deque>
+#include <armadillo>
 
 using namespace std;
 
@@ -44,7 +45,7 @@ class Kittler
 {
 public:
 	Kittler():Depth(0), Discriminability(0), GlobalMin(0), Threshold(0) {};
-	bool FindThreshold(const vector<double>& H, double RHmin, double RHmax);
+	bool FindThreshold(const arma::vec &H, double RHmin, double RHmax);
 	double GetDepth() {
 		return Depth;
 	}

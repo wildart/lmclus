@@ -33,7 +33,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     try{   
     
     // Set parameters
-    Parameters params;
+    clustering::lmclus::Parameters params;
     params.MAX_DIM = INTEGER(maxDim)[0];
     params.NUM_OF_CLUS = INTEGER(numOfClus)[0];
     params.NOISE_SIZE = static_cast<unsigned int>(INTEGER(noiseSize)[0]);
@@ -61,7 +61,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     std::vector<arma::mat> basises; 
     std::vector<int> clusterDims;
     
-    LMCLUS lmclus(&log); 
+    clustering::lmclus::LMCLUS lmclus(&log); 
     lmclus.cluster(data, params, labels, thresholds, basises, clusterDims);
     if (show_log)
         Rprintf("%s", log.getString().c_str());

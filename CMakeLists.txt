@@ -8,9 +8,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 # gcc flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-deprecated -O2")
 
-include_directories(inst/include/armadillo)
-include_directories(inst/include/cpplog)
-include_directories(inst/include/)
+include_directories(include/armadillo)
+include_directories(include/cpplog)
+include_directories(include/)
 
 if(NOT WIN32)
     find_package(MKL)
@@ -28,11 +28,6 @@ if(WIN32)
 	link_directories(${CMAKE_SOURCE_DIR}/contrib/libs)
 	set(BLAS_LIBS blas lapack)
 endif(WIN32)
-
-#find_package(Armadillo REQUIRED)
-#include_directories(${ARMADILLO_INCLUDE_DIRS})
-find_package(R REQUIRED)
-include_directories(${R_INCLUDE_DIR})
 
 option(LMCLUS_BUILD_TESTING "Build the test suite." ON)
 

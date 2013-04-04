@@ -1,5 +1,5 @@
 # add some includes
-include_directories(../inst/include/third-party)
+include_directories(../include/third-party)
 # build executable
 add_executable(lmclus_test lmclus_test.cpp)
 # link demo with library

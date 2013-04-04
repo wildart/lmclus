@@ -40,14 +40,14 @@
 #include <limits>
 #include <chrono>
 
-#include <armadillo>
+#include "Kittler.h"
 #include "lmclus.hpp"
 
 #define EPS 1e-8
 
 /* Random number generator
  */
-unsigned int LMCLUS::randromNumber()
+unsigned int clustering::lmclus::LMCLUS::randromNumber()
 {
     return dist(engine);
 }
@@ -61,7 +61,7 @@ unsigned int LMCLUS::randromNumber()
  * of error that does not exceed an error bound. 3 different types of heuristics may be used
  * depending on LMCLUS's input parameters.
  */
-int LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const Parameters &para)
+int clustering::lmclus::LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const Parameters &para)
 {
     double k=static_cast<double>(para.NUM_OF_CLUS);
 
@@ -106,7 +106,7 @@ int LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const int DataSize, const 
  * that the same point is not sampled twice. the function will return
  * a index vector, specifying the index of the sampled points.
  */
-arma::uvec LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
+arma::uvec clustering::lmclus::LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
 {
     size_t NumOfPoints = LMDim+1, empty = data.n_rows+1;
     arma::uvec point_index(NumOfPoints);  
@@ -157,7 +157,7 @@ arma::uvec LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
  * the same integer is not sampled twice. the function returns an intger vector
  * containing the sampled integers.
  */
-arma::uvec LMCLUS::sample(const int n, const int k)
+arma::uvec clustering::lmclus::LMCLUS::sample(const int n, const int k)
 {
     arma::uvec index = arma::zeros<arma::uvec>(n);
     arma::uvec SampleIndex(k);
@@ -190,7 +190,7 @@ arma::uvec LMCLUS::sample(const int n, const int k)
  * is the transpose of the basis matrix. the function also returns the origin
  * of the basis vectors.
  */
-std::pair<arma::rowvec, arma::mat> LMCLUS::formBasis(const arma::mat &points)
+std::pair<arma::rowvec, arma::mat> clustering::lmclus::LMCLUS::formBasis(const arma::mat &points)
 {
     arma::mat B_T(points.n_rows-1, points.n_cols);   // create the B (Basis) transpose matrix
     
@@ -225,7 +225,7 @@ std::pair<arma::rowvec, arma::mat> LMCLUS::formBasis(const arma::mat &points)
  * || b_i || : is the norm (length of the vector)
  * to calculate b_i use : b_i = ( m_i - sum( (b_j'm_i)b_j ) ) / || b_i ||
  */
-arma::mat LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
+arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
 {
     arma::mat B( M.n_rows, M.n_cols );       // create an uninitialized orthogonal basis matrix
 
@@ -262,10 +262,9 @@ arma::mat LMCLUS::gramSchmidtOrthogonalization(const arma::mat &M)
  * (the distance will not be determined for points that were already sampled to create the linear manifold).
  * depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
  */
-std::vector<double> LMCLUS::determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, 
+arma::vec clustering::lmclus::LMCLUS::determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, 
                                                const Parameters &para)
 {
-    vector<double> Distances;                     // vector to hold distances of points from basis
     arma::mat data1;
 
     if(para.HIS_SAMPLING) 
@@ -287,6 +286,8 @@ std::vector<double> LMCLUS::determineDistances(const arma::mat &data, const arma
     } else
         data1=data;
 
+    arma::vec Distances = arma::zeros<arma::vec>(data1.n_rows);                     // vector to hold distances of points from basis
+    
     //LOG_TRACE(log)<<"Data rows: " << data1.n_rows;
     for (unsigned int i=0; i < data1.n_rows; i++) {
         arma::rowvec Z_n = ( data1.row(i) - origin );      // point with respect to basis
@@ -297,28 +298,10 @@ std::vector<double> LMCLUS::determineDistances(const arma::mat &data, const arma
         double b=arma::norm(d_v, 2);
         d_n=sqrt((c*c)-(b*b));
         if(d_n>=0 && d_n<1000000000)
-            Distances.push_back( d_n );
+            Distances(i) = d_n;
     }
 
     return Distances;
-}
-
-/* findThreshold
- * -------------
- * using kittler's thresholding algorithm, find the threshold, separation and depth of a distances histogram
- */
-Kittler LMCLUS::findThreshold(const Histogram &H)
-{
-    Histogram Hcopy=H;
-    Kittler K;
-    Hcopy.Normalize();
-
-    double RHmin=H.get_min_H();
-    double RHmax=H.get_max_H(); 
-
-    K.FindThreshold(Hcopy.get_H(), RHmin, RHmax);
-    
-    return K;
 }
 
 /* findBestSeparation
@@ -328,7 +311,7 @@ Kittler LMCLUS::findThreshold(const Histogram &H)
  * 2- create distance histograms of the data points to each trial linear manifold
  * 3- of all the linear manifolds sampled select the one whose associated distance histogram shows the best separation between to modes.
  */
-Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, const Parameters &para)
+clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, const Parameters &params)
 {
     int DataSize = data.n_rows;
     int FullSpcDim = data.n_cols;
@@ -337,7 +320,7 @@ Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, c
     LOG_INFO(log)<<"------------------------------------------------------------";
     Separation best_sep;                                // contains info about best separation
 
-    int Q=LMCLUS::sampleQuantity( LMDim, FullSpcDim, DataSize, para );               // determine number of samples of "LMDim+1" points
+    int Q=LMCLUS::sampleQuantity( LMDim, FullSpcDim, DataSize, params );               // determine number of samples of "LMDim+1" points
     LOG_TRACE(log) << "Collect " << Q << " sample(s)";
     
     for (int i=0; i < Q; i++) {                         // sample Q times SubSpaceDim+1 points      
@@ -347,29 +330,32 @@ Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, c
 
         auto basis = formBasis(data.rows(points_idx));            // form basis (transpose) of the linear manifold spanned by the sampled points (vectors)
         auto B_T = gramSchmidtOrthogonalization(std::get<1>(basis));           // orthogonalize Basis ( with orthonormal basis-vectors)       
-	LOG_TRACE(log) << "Orthogonal basis:\n" << std::get<1>(basis);
+        LOG_TRACE(log) << "Orthogonal basis:\n" << std::get<1>(basis);
         
         // determine distances of points to the linear manifold
-        auto distances = determineDistances(data, B_T, std::get<0>(basis), para);
+        arma::vec distances = determineDistances(data, B_T, std::get<0>(basis), params);
+        double RHmin=distances.min();
+        double RHmax=distances.max(); 
+        LOG_TRACE(log) << "Distances from " << RHmin << " to " << RHmax;
 
         // generate a distances histogram
-        Histogram H;
-        if(para.CONST_SIZE_HIS>0)
-            H.createHistogram( distances, para.CONST_SIZE_HIS );     // create a histogram with constant number of bins equal to CONST_SIZE_HIS
-        else
-            H.createHistogram( distances, para.MAX_BIN_PORTION );    // create a histogram with a variable number of bins according to a heuristic.
-
+        arma::uvec hist = arma::hist(distances, params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : static_cast<int>(distances.n_elem * params.MAX_BIN_PORTION));
+        
         // Cannot calculate distances
-        if (H.get_min_H() == H.get_max_H()) 
+        auto filledBins = find(hist > 0).eval();
+        LOG_TRACE(log) << "Non-empty bins: \n" << filledBins.n_elem;
+        if ( filledBins.n_elem < 2)
             continue;
         
-        H.insert_data( distances );
-        
         // Threshold histogram and determine goodness of separation
-        Kittler K= findThreshold(H);
+        arma::vec histNorm = arma::conv_to< arma::vec >::from(hist) / static_cast<double>(distances.n_elem);
+        LOG_TRACE(log) << "Create histogram: \n" << histNorm.t();
+        
+        Kittler K;
+        K.FindThreshold(histNorm, RHmin, RHmax);
         LOG_TRACE(log) << "Found threshold: " << K.GetDiscrim()*K.GetDepth();
 
-        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), std::get<0>(basis), B_T, H);  // store separation info
+        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), std::get<0>(basis), B_T, hist);  // store separation info
         
         // keep track of best histogram/separation
         if ( (K.GetDiscrim()*K.GetDepth() ) > best_sep.get_criteria()  )
@@ -380,15 +366,13 @@ Separation LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, c
         LOG_DEBUG(log) << "no good histograms to spearate data !!!";
     else {
         LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="<<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();
-        Histogram h=best_sep.get_histo();
-        //h.display(best_sep.get_threshold());
     }
 
     return best_sep;
 }
 
 
-void LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
+void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
 		     std::vector<arma::uvec> &labels, std::vector<double> &thresholds, std::vector<arma::mat> &basises, std::vector<int> &clusterDims)
 {
     // Initialize random generator
