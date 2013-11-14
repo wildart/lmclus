@@ -4,16 +4,16 @@
 # Copyright (C) 2013 Art Diky
 
 # For windows Rtools 2.15.0 use gcc 4.6.3
-CLINK_CPPFLAGS=-std=c++0x
-#CLINK_CPPFLAGS=-std=c++11
+#CLINK_CPPFLAGS=-std=c++0x
+CLINK_CPPFLAGS=-std=c++11 -fopenmp
 
 all: 	$(SHLIB) userLibrary 
 
 ## we place it inside the inst/ directory so that it gets installed by the package
 USERDIR =	.
 
-USERLIB	=	liblmclusr$(DYLIB_EXT)
-MISCLIB =   lmclus$(DYLIB_EXT)
+USERLIB	= liblmclusr$(DYLIB_EXT)
+MISCLIB = lmclus$(DYLIB_EXT)
 
 PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 

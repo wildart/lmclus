@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2011 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2011 Conrad Sanderson
+// Copyright (C) 2008-2011 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup gemm_mixed
@@ -36,8 +31,8 @@ class gemm_mixed_large
           Mat<out_eT>& C,
     const Mat<in_eT1>& A,
     const Mat<in_eT2>& B,
-    const out_eT alpha = out_eT(1),
-    const out_eT beta  = out_eT(0)
+    const out_eT       alpha = out_eT(1),
+    const out_eT       beta  = out_eT(0)
     )
     {
     arma_extra_debug_sigprint();
@@ -67,26 +62,10 @@ class gemm_mixed_large
             acc += upgrade_val<in_eT1,in_eT2>::apply(A_rowdata[i]) * upgrade_val<in_eT1,in_eT2>::apply(B_coldata[i]);
             }
         
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(row_A,col_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(row_A,col_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(row_A,col_B) = acc + beta*C.at(row_A,col_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(row_A,col_B) = alpha*acc + beta*C.at(row_A,col_B);
-            }
-          
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(row_A,col_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(row_A,col_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(row_A,col_B) =       acc + beta*C.at(row_A,col_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(row_A,col_B) = alpha*acc + beta*C.at(row_A,col_B); }
           }
         }
       }
@@ -109,26 +88,10 @@ class gemm_mixed_large
             acc += upgrade_val<in_eT1,in_eT2>::apply(A_coldata[i]) * upgrade_val<in_eT1,in_eT2>::apply(B_coldata[i]);
             }
         
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(col_A,col_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(col_A,col_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(col_A,col_B) = acc + beta*C.at(col_A,col_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(col_A,col_B) = alpha*acc + beta*C.at(col_A,col_B);
-            }
-          
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(col_A,col_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(col_A,col_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(col_A,col_B) =       acc + beta*C.at(col_A,col_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(col_A,col_B) = alpha*acc + beta*C.at(col_A,col_B); }
           }
         }
       }
@@ -167,27 +130,11 @@ class gemm_mixed_large
             {
             acc += upgrade_val<in_eT1,in_eT2>::apply(B_rowdata[i]) * upgrade_val<in_eT1,in_eT2>::apply(A_coldata[i]);
             }
-        
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(col_A,row_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(col_A,row_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(col_A,row_B) = acc + beta*C.at(col_A,row_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(col_A,row_B) = alpha*acc + beta*C.at(col_A,row_B);
-            }
           
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(col_A,row_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(col_A,row_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(col_A,row_B) =       acc + beta*C.at(col_A,row_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(col_A,row_B) = alpha*acc + beta*C.at(col_A,row_B); }
           }
         }
       
@@ -216,8 +163,8 @@ class gemm_mixed_small
           Mat<out_eT>& C,
     const Mat<in_eT1>& A,
     const Mat<in_eT2>& B,
-    const out_eT alpha = out_eT(1),
-    const out_eT beta  = out_eT(0)
+    const out_eT       alpha = out_eT(1),
+    const out_eT       beta  = out_eT(0)
     )
     {
     arma_extra_debug_sigprint();
@@ -245,25 +192,10 @@ class gemm_mixed_small
             //acc += upgrade_val<in_eT1,in_eT2>::apply(A.at(row_A,i)) * upgrade_val<in_eT1,in_eT2>::apply(B_coldata[i]);
             }
           
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(row_A,col_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(row_A,col_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(row_A,col_B) = acc + beta*C.at(row_A,col_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(row_A,col_B) = alpha*acc + beta*C.at(row_A,col_B);
-            }
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(row_A,col_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(row_A,col_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(row_A,col_B) =       acc + beta*C.at(row_A,col_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(row_A,col_B) = alpha*acc + beta*C.at(row_A,col_B); }
           }
         }
       }
@@ -286,26 +218,10 @@ class gemm_mixed_small
             acc += upgrade_val<in_eT1,in_eT2>::apply(A_coldata[i]) * upgrade_val<in_eT1,in_eT2>::apply(B_coldata[i]);
             }
         
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(col_A,col_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(col_A,col_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(col_A,col_B) = acc + beta*C.at(col_A,col_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(col_A,col_B) = alpha*acc + beta*C.at(col_A,col_B);
-            }
-          
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(col_A,col_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(col_A,col_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(col_A,col_B) =       acc + beta*C.at(col_A,col_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(col_A,col_B) = alpha*acc + beta*C.at(col_A,col_B); }
           }
         }
       }
@@ -322,25 +238,10 @@ class gemm_mixed_small
             acc += upgrade_val<in_eT1,in_eT2>::apply(A.at(row_A,i)) * upgrade_val<in_eT1,in_eT2>::apply(B.at(row_B,i));
             }
           
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(row_A,row_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(row_A,row_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(row_A,row_B) = acc + beta*C.at(row_A,row_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(row_A,row_B) = alpha*acc + beta*C.at(row_A,row_B);
-            }
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(row_A,row_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(row_A,row_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(row_A,row_B) =       acc + beta*C.at(row_A,row_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(row_A,row_B) = alpha*acc + beta*C.at(row_A,row_B); }
           }
         }
       }
@@ -360,26 +261,10 @@ class gemm_mixed_small
             acc += upgrade_val<in_eT1,in_eT2>::apply(B.at(row_B,i)) * upgrade_val<in_eT1,in_eT2>::apply(A_coldata[i]);
             }
         
-          if( (use_alpha == false) && (use_beta == false) )
-            {
-            C.at(col_A,row_B) = acc;
-            }
-          else
-          if( (use_alpha == true) && (use_beta == false) )
-            {
-            C.at(col_A,row_B) = alpha * acc;
-            }
-          else
-          if( (use_alpha == false) && (use_beta == true) )
-            {
-            C.at(col_A,row_B) = acc + beta*C.at(col_A,row_B);
-            }
-          else
-          if( (use_alpha == true) && (use_beta == true) )
-            {
-            C.at(col_A,row_B) = alpha*acc + beta*C.at(col_A,row_B);
-            }
-          
+               if( (use_alpha == false) && (use_beta == false) )  { C.at(col_A,row_B) =       acc;                          }
+          else if( (use_alpha == true ) && (use_beta == false) )  { C.at(col_A,row_B) = alpha*acc;                          }
+          else if( (use_alpha == false) && (use_beta == true ) )  { C.at(col_A,row_B) =       acc + beta*C.at(col_A,row_B); }
+          else if( (use_alpha == true ) && (use_beta == true ) )  { C.at(col_A,row_B) = alpha*acc + beta*C.at(col_A,row_B); }
           }
         }
       
@@ -410,8 +295,8 @@ class gemm_mixed
           Mat<out_eT>& C,
     const Mat<in_eT1>& A,
     const Mat<in_eT2>& B,
-    const out_eT alpha = out_eT(1),
-    const out_eT beta  = out_eT(0)
+    const out_eT       alpha = out_eT(1),
+    const out_eT       beta  = out_eT(0)
     )
     {
     arma_extra_debug_sigprint();
@@ -419,8 +304,8 @@ class gemm_mixed
     Mat<in_eT1> tmp_A;
     Mat<in_eT2> tmp_B;
     
-    const bool predo_trans_A = ( (do_trans_A == true) && (is_complex<in_eT1>::value == true) );
-    const bool predo_trans_B = ( (do_trans_B == true) && (is_complex<in_eT2>::value == true) );
+    const bool predo_trans_A = ( (do_trans_A == true) && (is_cx<in_eT1>::yes) );
+    const bool predo_trans_B = ( (do_trans_B == true) && (is_cx<in_eT2>::yes) );
     
     if(do_trans_A)
       {

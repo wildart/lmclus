@@ -1,14 +1,9 @@
+// Copyright (C) 2008-2013 Conrad Sanderson
 // Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 using std::cout;
@@ -23,11 +18,14 @@ template<typename eT> class Mat;
 template<typename eT> class Col;
 template<typename eT> class Row;
 template<typename eT> class Cube;
+template<typename eT> class xvec_htrans;
 template<typename oT> class field;
 
 template<typename eT> class subview;
 template<typename eT> class subview_col;
 template<typename eT> class subview_row;
+template<typename eT> class subview_row_strans;
+template<typename eT> class subview_row_htrans;
 template<typename eT> class subview_cube;
 template<typename oT> class subview_field;
 
@@ -62,6 +60,7 @@ class op_abs;
 class op_diagmat;
 class op_trimat;
 class op_diagvec;
+class op_vectorise_col;
 
 class eop_conj;
 
@@ -211,3 +210,28 @@ enum file_type
 //! @}
 
 
+
+//! \addtogroup fill
+//! @{
+
+namespace fill
+  {
+  struct fill_none  {};
+  struct fill_zeros {};
+  struct fill_ones  {};
+  struct fill_eye   {};
+  struct fill_randu {};
+  struct fill_randn {};
+  
+  template<typename fill_type> 
+  struct fill_class { inline fill_class() {} };
+  
+  static const fill_class<fill_none > none;
+  static const fill_class<fill_zeros> zeros;
+  static const fill_class<fill_ones > ones;
+  static const fill_class<fill_eye  > eye;
+  static const fill_class<fill_randu> randu;
+  static const fill_class<fill_randn> randn;
+  }
+
+//! @}

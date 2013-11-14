@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup traits
@@ -386,6 +381,36 @@ struct is_op_diagmat< const Op<T1,op_diagmat> >
   { static const bool value = true; };
 
 
+template<typename T>
+struct is_op_htrans2
+  { static const bool value = false; };
+ 
+template<typename T1>
+struct is_op_htrans2< Op<T1,op_htrans2> >
+  { static const bool value = true; };
+
+template<typename T1>
+struct is_op_htrans2< const Op<T1,op_htrans2> >
+  { static const bool value = true; };
+
+
+//
+//
+
+
+template<typename T>
+struct is_Mat_trans
+  { static const bool value = false; };
+
+template<typename T1>
+struct is_Mat_trans< Op<T1,op_htrans> >
+  { static const bool value = is_Mat<T1>::value; };
+
+template<typename T1>
+struct is_Mat_trans< Op<T1,op_htrans2> >
+  { static const bool value = is_Mat<T1>::value; };
+
+
 //
 //
 
@@ -712,12 +737,20 @@ struct is_arma_sparse_type
 
 template<typename T1, typename T2>
 struct is_same_type
-  { static const bool value = false; };
+  {
+  static const bool value = false;
+  static const bool yes   = false;
+  static const bool no    = true;
+  };
 
 
 template<typename T1>
 struct is_same_type<T1,T1>
-  { static const bool value = true; };
+  {
+  static const bool value = true;
+  static const bool yes   = true;
+  static const bool no    = false;
+  };
 
 
 
@@ -908,6 +941,21 @@ struct is_double<double>
 
 
 template<typename T1>
+struct is_real
+  { static const bool value = false; };
+
+template<>
+struct is_real<float>
+  { static const bool value = true; };
+  
+template<>
+struct is_real<double>
+  { static const bool value = true; };
+
+
+
+
+template<typename T1>
 struct is_not_complex
   { static const bool value = true; };
 
@@ -946,6 +994,38 @@ template<>
 struct is_complex_double< std::complex<double> >
   { static const bool value = true; };
 
+
+
+template<typename T1>
+struct is_complex_strict
+  { static const bool value = false; };
+
+template<>
+struct is_complex_strict< std::complex<float> >
+  { static const bool value = true; };
+
+template<>
+struct is_complex_strict< std::complex<double> >
+  { static const bool value = true; };
+
+
+
+template<typename T1>
+struct is_cx
+  {
+  static const bool value = false;
+  static const bool yes   = false;
+  static const bool no    = true;
+  };
+
+// template<>
+template<typename T>
+struct is_cx< std::complex<T> >
+  {
+  static const bool value = true;
+  static const bool yes   = true;
+  static const bool no    = false;
+  };
 
 
 

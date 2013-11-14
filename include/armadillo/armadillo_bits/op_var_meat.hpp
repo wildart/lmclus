@@ -1,14 +1,9 @@
-// Copyright (C) 2009-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2009-2012 Conrad Sanderson
+// Copyright (C) 2009-2012 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup op_var
@@ -108,10 +103,8 @@ op_var::var_vec(const subview_col<eT>& X, const uword norm_type)
   {
   arma_extra_debug_sigprint();
   
-  typedef typename get_pod_type<eT>::result T;
-  
   arma_debug_check( (norm_type > 1), "var(): incorrect usage. norm_type must be 0 or 1");
-
+  
   return op_var::direct_var(X.colptr(0), X.n_rows, norm_type);
   }
 
@@ -124,8 +117,6 @@ typename get_pod_type<eT>::result
 op_var::var_vec(const subview_row<eT>& X, const uword norm_type)
   {
   arma_extra_debug_sigprint();
-  
-  typedef typename get_pod_type<eT>::result T;
   
   arma_debug_check( (norm_type > 1), "var(): incorrect usage. norm_type must be 0 or 1");
   

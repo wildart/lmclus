@@ -1,14 +1,10 @@
 // Copyright (C) 2012 Ryan Curtin
 // Copyright (C) 2012 Conrad Sanderson
+// Copyright (C) 2013 Szabolcs Horvat
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 //! \addtogroup hdf5_misc
 //! @{
@@ -456,22 +452,20 @@ search_hdf5_file
 
 
 
-//! Load an HDF5 matrix into a Mat of type specified by datatype,
-//! then convert that into the desired matrix 'dest'.
+//! Load an HDF5 matrix into an array of type specified by datatype,
+//! then convert that into the desired array 'dest'.
 //! This should only be called when eT is not the datatype.
 template<typename eT>
 inline
 hid_t
 load_and_convert_hdf5
   (
-  Mat<eT>& dest,
-  hid_t    dataset,
-  hid_t    datatype,
-  hsize_t* dims
+  eT   *dest,
+  hid_t dataset,
+  hid_t datatype,
+  uword n_elem
   )
   {
-  const uword n_rows = dims[0];
-  const uword n_cols = dims[1];
   
   // We can't use nice template specializations here
   // as the determination of the type of 'datatype' must be done at runtime.
@@ -488,9 +482,9 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<u8> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
+    Col<u8> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
 
     return status;
     }
@@ -503,10 +497,10 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<s8> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
-    
+    Col<s8> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
+
     return status;
     }
   
@@ -518,9 +512,9 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<u16> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
+    Col<u16> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
 
     return status;
     }
@@ -533,9 +527,9 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<s16> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
+    Col<s16> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
 
     return status;
     }
@@ -548,9 +542,9 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<u32> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
+    Col<u32> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
 
     return status;
     }
@@ -563,10 +557,10 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<s32> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
-    
+    Col<s32> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
+
     return status;
     }
   
@@ -580,10 +574,10 @@ load_and_convert_hdf5
     
     if(is_equal)
       {
-      Mat<u64> m(n_rows, n_cols);
-      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-      dest = conv_to< Mat<eT> >::from(m); // Convert.
-      
+      Col<u64> v(n_elem);
+      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+      arrayops::convert(dest, v.memptr(), n_elem);
+
       return status;
       }
     
@@ -595,9 +589,9 @@ load_and_convert_hdf5
     
     if(is_equal)
       {
-      Mat<s64> m(n_rows, n_cols);
-      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-      dest = conv_to< Mat<eT> >::from(m); // Convert.
+      Col<s64> v(n_elem);
+      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+      arrayops::convert(dest, v.memptr(), n_elem);
 
       return status;
       }
@@ -614,10 +608,10 @@ load_and_convert_hdf5
     
     if(is_equal)
       {
-      Mat<ulng_t> m(n_rows, n_cols);
-      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-      dest = conv_to< Mat<eT> >::from(m); // Convert.
-      
+      Col<ulng_t> v(n_elem);
+      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+      arrayops::convert(dest, v.memptr(), n_elem);
+
       return status;
       }
     
@@ -629,10 +623,10 @@ load_and_convert_hdf5
     
     if(is_equal)
       {
-      Mat<slng_t> m(n_rows, n_cols);
-      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-      dest = conv_to< Mat<eT> >::from(m); // Convert.
-      
+      Col<slng_t> v(n_elem);
+      hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+      arrayops::convert(dest, v.memptr(), n_elem);
+
       return status;
       }
     }
@@ -646,10 +640,10 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<float> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
-    
+    Col<float> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
+
     return status;
     }
   
@@ -661,10 +655,10 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat<double> m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
-    
+    Col<double> v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert(dest, v.memptr(), n_elem);
+
     return status;
     }
   
@@ -676,10 +670,15 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat< std::complex<float> > m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
-
+    if(is_complex<eT>::value == false)
+      {
+      return -1; // can't read complex data into non-complex matrix/cube
+      }
+    
+    Col< std::complex<float> > v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert_cx(dest, v.memptr(), n_elem);
+    
     return status;
     }
   
@@ -691,11 +690,15 @@ load_and_convert_hdf5
   
   if(is_equal)
     {
-    Mat< std::complex<double> > m(n_rows, n_cols);
-    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(m.memptr()));
-    dest = conv_to< Mat<eT> >::from(m); // Convert.
+    if(is_complex<eT>::value == false)
+      {
+      return -1; // can't read complex data into non-complex matrix/cube
+      }
     
-    H5Tclose(search_type);
+    Col< std::complex<double> > v(n_elem);
+    hid_t status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, void_ptr(v.memptr()));
+    arrayops::convert_cx(dest, v.memptr(), n_elem);
+    
     return status;
     }
   

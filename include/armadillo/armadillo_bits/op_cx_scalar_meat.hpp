@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2010 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2010 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup op_cx_scalar
@@ -28,19 +23,33 @@ op_cx_scalar_times::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = A[i] * k;
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = A[i] * k;
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = A.at(row,col) * k;  ++out_mem;
+      }
     }
   }
 
@@ -58,19 +67,33 @@ op_cx_scalar_plus::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = A[i] + k;
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = A[i] + k;
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = A.at(row,col) + k;  ++out_mem;
+      }
     }
   }
 
@@ -88,19 +111,33 @@ op_cx_scalar_minus_pre::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = k - A[i];
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = k - A[i];
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = k - A.at(row,col);  ++out_mem;
+      }
     }
   }
 
@@ -118,19 +155,33 @@ op_cx_scalar_minus_post::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = A[i] - k;
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = A[i] - k;
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = A.at(row,col) - k;  ++out_mem;
+      }
     }
   }
 
@@ -148,19 +199,33 @@ op_cx_scalar_div_pre::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = k / A[i];
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = k / A[i];
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = k / A.at(row,col);  ++out_mem;
+      }
     }
   }
 
@@ -178,19 +243,33 @@ op_cx_scalar_div_post::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const Proxy<T1> A(X.m);
   
-  out.set_size(A.get_n_rows(), A.get_n_cols());
+  const uword n_rows = A.get_n_rows();
+  const uword n_cols = A.get_n_cols();
+  
+  out.set_size(n_rows, n_cols);
   
   const eT  k       = X.aux_out_eT;
-  const uword n_elem  = out.n_elem;
         eT* out_mem = out.memptr();
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    out_mem[i] = A[i] / k;
+    const uword n_elem = A.get_n_elem();
+  
+    for(uword i=0; i<n_elem; ++i)
+      {
+      out_mem[i] = A[i] / k;
+      }
+    }
+  else
+    {
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      *out_mem = A.at(row,col) / k;  ++out_mem;
+      }
     }
   }
 
@@ -214,16 +293,16 @@ op_cx_scalar_times::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
+  // TODO: implement handling for ProxyCube<T1>::prefer_at_accessor == true
   for(uword i=0; i<n_elem; ++i)
     {
     out_mem[i] = A[i] * k;
@@ -244,15 +323,14 @@ op_cx_scalar_plus::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
   for(uword i=0; i<n_elem; ++i)
     {
@@ -274,15 +352,14 @@ op_cx_scalar_minus_pre::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
   for(uword i=0; i<n_elem; ++i)
     {
@@ -304,15 +381,14 @@ op_cx_scalar_minus_post::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
   for(uword i=0; i<n_elem; ++i)
     {
@@ -334,15 +410,14 @@ op_cx_scalar_div_pre::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
   for(uword i=0; i<n_elem; ++i)
     {
@@ -364,15 +439,14 @@ op_cx_scalar_div_post::apply
   arma_extra_debug_sigprint();
   
   typedef typename std::complex<typename T1::pod_type> eT;
-  typedef typename T1::pod_type                         T;
   
   const ProxyCube<T1> A(X.m);
   
   out.set_size(A.get_n_rows(), A.get_n_cols(), A.get_n_slices());
   
-  const eT  k       = X.aux_out_eT;
+  const eT    k       = X.aux_out_eT;
   const uword n_elem  = out.n_elem;
-        eT* out_mem = out.memptr();
+        eT*   out_mem = out.memptr();
   
   for(uword i=0; i<n_elem; ++i)
     {

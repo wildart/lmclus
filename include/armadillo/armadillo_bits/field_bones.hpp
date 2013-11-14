@@ -1,15 +1,10 @@
+// Copyright (C) 2008-2013 Conrad Sanderson
 // Copyright (C) 2008-2011 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2011 Conrad Sanderson
 // Copyright (C) 2009-2010 Ian Cullinan
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup field
@@ -24,7 +19,7 @@ struct field_prealloc_n_elem
 
 
 
-//! A lightweight 2D container for abitrary objects
+//! A lightweight 2D container for arbitrary objects
 //! (the objects must have a copy constructor)
 
 template<typename oT>
@@ -116,12 +111,12 @@ class field
   
   arma_inline bool is_empty() const;
   
-  arma_inline arma_warn_unused bool in_range(const uword   i) const;
+  arma_inline arma_warn_unused bool in_range(const uword i) const;
   arma_inline arma_warn_unused bool in_range(const span& x) const;
   
-  arma_inline arma_warn_unused bool in_range(const uword   in_row,   const uword   in_col  ) const;
-  arma_inline arma_warn_unused bool in_range(const span& row_span, const uword   in_col  ) const;
-  arma_inline arma_warn_unused bool in_range(const uword   in_row,   const span& col_span) const;
+  arma_inline arma_warn_unused bool in_range(const uword   in_row, const uword   in_col) const;
+  arma_inline arma_warn_unused bool in_range(const span& row_span, const uword   in_col) const;
+  arma_inline arma_warn_unused bool in_range(const uword   in_row, const span& col_span) const;
   arma_inline arma_warn_unused bool in_range(const span& row_span, const span& col_span) const;
   
   inline bool save(const std::string   name, const file_type type = arma_binary, const bool print_status = true) const;
@@ -138,7 +133,11 @@ class field
   inline bool quiet_load(      std::istream& is,   const file_type type = auto_detect);
   
   
-  // iterators
+  // for container-like functionality
+  
+  typedef oT    value_type;
+  typedef uword size_type;
+    
   
   class iterator
     {
@@ -158,7 +157,7 @@ class field
     inline bool operator==(const iterator& X) const;
     
     arma_aligned field<oT>& M;
-    arma_aligned uword        i;
+    arma_aligned uword      i;
     };
   
   
@@ -181,16 +180,22 @@ class field
     inline bool operator==(const const_iterator& X) const;
     
     arma_aligned const field<oT>& M;
-    arma_aligned       uword        i;
+    arma_aligned       uword      i;
     };
   
-  inline       iterator begin();
-  inline const_iterator begin() const;
+  inline       iterator  begin();
+  inline const_iterator  begin() const;
+  inline const_iterator cbegin() const;
   
-  inline       iterator end();
-  inline const_iterator end()   const;
+  inline       iterator  end();
+  inline const_iterator  end() const;
+  inline const_iterator cend() const;
   
+  inline void  clear();
+  inline bool  empty() const;
+  inline uword size()  const;
   
+    
   private:
   
   inline void init(const field<oT>& x);
@@ -224,35 +229,35 @@ class field_aux
                         inline static void reset_objects(field< std::string >& x);
   
   
-  template<typename oT> inline static bool save(const field< oT >& x,       const std::string& name, const file_type type, std::string& err_msg);
-  template<typename oT> inline static bool save(const field< oT >& x,       std::ostream& os,        const file_type type, std::string& err_msg);
-  template<typename oT> inline static bool load(      field< oT >& x,       const std::string& name, const file_type type, std::string& err_msg);
-  template<typename oT> inline static bool load(      field< oT >& x,       std::istream& is,        const file_type type, std::string& err_msg);
+  template<typename oT> inline static bool save(const field< oT >& x,       const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename oT> inline static bool save(const field< oT >& x,             std::ostream& os,   const file_type type, std::string& err_msg);
+  template<typename oT> inline static bool load(      field< oT >& x,       const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename oT> inline static bool load(      field< oT >& x,             std::istream& is,   const file_type type, std::string& err_msg);
 
-  template<typename eT> inline static bool save(const field< Mat<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool save(const field< Mat<eT> >& x,  std::ostream& os,        const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Mat<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Mat<eT> >& x,  std::istream& is,        const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Mat<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Mat<eT> >& x,        std::ostream& os,   const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Mat<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Mat<eT> >& x,        std::istream& is,   const file_type type, std::string& err_msg);
   
-  template<typename eT> inline static bool save(const field< Col<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool save(const field< Col<eT> >& x,  std::ostream& os,        const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Col<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Col<eT> >& x,  std::istream& is,        const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Col<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Col<eT> >& x,        std::ostream& os,   const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Col<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Col<eT> >& x,        std::istream& is,   const file_type type, std::string& err_msg);
   
-  template<typename eT> inline static bool save(const field< Row<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool save(const field< Row<eT> >& x,  std::ostream& os,        const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Row<eT> >& x,  const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Row<eT> >& x,  std::istream& is,        const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Row<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Row<eT> >& x,        std::ostream& os,   const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Row<eT> >& x,  const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Row<eT> >& x,        std::istream& is,   const file_type type, std::string& err_msg);
 
-  template<typename eT> inline static bool save(const field< Cube<eT> >& x, const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool save(const field< Cube<eT> >& x, std::ostream& os,        const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Cube<eT> >& x, const std::string& name, const file_type type, std::string& err_msg);
-  template<typename eT> inline static bool load(      field< Cube<eT> >& x, std::istream& is,        const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Cube<eT> >& x, const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool save(const field< Cube<eT> >& x,       std::ostream& os,   const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Cube<eT> >& x, const std::string&  name, const file_type type, std::string& err_msg);
+  template<typename eT> inline static bool load(      field< Cube<eT> >& x,       std::istream& is,   const file_type type, std::string& err_msg);
   
-  inline static bool save(const field< std::string >& x, const std::string& name, const file_type type, std::string& err_msg);
-  inline static bool save(const field< std::string >& x, std::ostream& os,        const file_type type, std::string& err_msg);
-  inline static bool load(      field< std::string >& x, const std::string& name, const file_type type, std::string& err_msg);
-  inline static bool load(      field< std::string >& x, std::istream& is,        const file_type type, std::string& err_msg);
+  inline static bool save(const field< std::string >& x, const std::string&  name, const file_type type, std::string& err_msg);
+  inline static bool save(const field< std::string >& x,       std::ostream& os,   const file_type type, std::string& err_msg);
+  inline static bool load(      field< std::string >& x, const std::string&  name, const file_type type, std::string& err_msg);
+  inline static bool load(      field< std::string >& x,       std::istream& is,   const file_type type, std::string& err_msg);
   
   };
 

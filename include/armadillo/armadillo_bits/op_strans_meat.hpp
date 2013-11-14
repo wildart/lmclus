@@ -1,15 +1,10 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // Copyright (C) 2012 Ryan Curtin
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup op_strans
@@ -18,13 +13,13 @@
 
 
 //! for tiny square matrices (size <= 4x4)
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans::apply_noalias_tinysq(Mat<eT>& out, const Mat<eT>& A)
+op_strans::apply_noalias_tinysq(Mat<eT>& out, const TA& A)
   {
-  const eT* Am   = A.memptr();
+  const eT*   Am =   A.memptr();
         eT* outm = out.memptr();
   
   switch(A.n_rows)
@@ -94,11 +89,11 @@ op_strans::apply_noalias_tinysq(Mat<eT>& out, const Mat<eT>& A)
 
 
 //! Immediate transpose of a dense matrix
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans::apply_noalias(Mat<eT>& out, const Mat<eT>& A)
+op_strans::apply_noalias(Mat<eT>& out, const TA& A)
   {
   arma_extra_debug_sigprint();
   
@@ -107,9 +102,9 @@ op_strans::apply_noalias(Mat<eT>& out, const Mat<eT>& A)
   
   out.set_size(A_n_cols, A_n_rows);
   
-  if( (A_n_cols == 1) || (A_n_rows == 1) )
+  if( (TA::is_row) || (TA::is_col) || (A_n_cols == 1) || (A_n_rows == 1) )
     {
-    arrayops::copy( out.memptr(), A.mem, A.n_elem );
+    arrayops::copy( out.memptr(), A.memptr(), A.n_elem );
     }
   else
     {
@@ -145,11 +140,11 @@ op_strans::apply_noalias(Mat<eT>& out, const Mat<eT>& A)
 
 
 
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans::apply(Mat<eT>& out, const Mat<eT>& A)
+op_strans::apply(Mat<eT>& out, const TA& A)
   {
   arma_extra_debug_sigprint();
   
@@ -159,8 +154,8 @@ op_strans::apply(Mat<eT>& out, const Mat<eT>& A)
     }
   else
     {
-    const uword n_rows = out.n_rows;
-    const uword n_cols = out.n_cols;
+    const uword n_rows = A.n_rows;
+    const uword n_cols = A.n_cols;
     
     if(n_rows == n_cols)
       {
@@ -354,13 +349,13 @@ op_strans::apply(Mat<typename T1::elem_type>& out, const Op<T1,op_strans>& in)
 
 
 //! for tiny square matrices (size <= 4x4)
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans2::apply_noalias_tinysq(Mat<eT>& out, const Mat<eT>& A, const eT val)
+op_strans2::apply_noalias_tinysq(Mat<eT>& out, const TA& A, const eT val)
   {
-  const eT* Am   = A.memptr();
+  const eT* Am   =   A.memptr();
         eT* outm = out.memptr();
   
   switch(A.n_rows)
@@ -429,11 +424,11 @@ op_strans2::apply_noalias_tinysq(Mat<eT>& out, const Mat<eT>& A, const eT val)
 
 
 
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans2::apply_noalias(Mat<eT>& out, const Mat<eT>& A, const eT val)
+op_strans2::apply_noalias(Mat<eT>& out, const TA& A, const eT val)
   {
   arma_extra_debug_sigprint();
   
@@ -442,11 +437,11 @@ op_strans2::apply_noalias(Mat<eT>& out, const Mat<eT>& A, const eT val)
   
   out.set_size(A_n_cols, A_n_rows);
   
-  if( (A_n_cols == 1) || (A_n_rows == 1) )
+  if( (TA::is_col) || (TA::is_row) || (A_n_cols == 1) || (A_n_rows == 1) )
     {
     const uword N = A.n_elem;
     
-    const eT* A_mem   = A.memptr();
+    const eT*   A_mem =   A.memptr();
           eT* out_mem = out.memptr();
     
     uword i,j;
@@ -498,11 +493,11 @@ op_strans2::apply_noalias(Mat<eT>& out, const Mat<eT>& A, const eT val)
 
 
 
-template<typename eT>
+template<typename eT, typename TA>
 arma_hot
 inline
 void
-op_strans2::apply(Mat<eT>& out, const Mat<eT>& A, const eT val)
+op_strans2::apply(Mat<eT>& out, const TA& A, const eT val)
   {
   arma_extra_debug_sigprint();
   

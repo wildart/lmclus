@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup subview_cube
@@ -47,6 +42,25 @@ subview_cube<eT>::subview_cube
   , n_elem      (n_elem_slice * in_n_slices)
   {
   arma_extra_debug_sigprint();
+  }
+
+
+
+template<typename eT>
+inline
+void
+subview_cube<eT>::operator= (const eT val)
+  {
+  arma_extra_debug_sigprint();
+  
+  if(n_elem != 1)
+    {
+    arma_debug_assert_same_size(n_rows, n_cols, n_slices, 1, 1, 1, "copy into subcube");
+    }
+  
+  Cube<eT>& Q = const_cast< Cube<eT>& >(m);
+  
+  Q.at(aux_row1, aux_col1, aux_slice1) = val;
   }
 
 
@@ -872,6 +886,64 @@ subview_cube<eT>::operator/= (const Base<eT,T1>& in)
 
 
 
+//! transform each element in the subview using a functor
+template<typename eT>
+template<typename functor>
+inline
+void
+subview_cube<eT>::transform(functor F)
+  {
+  arma_extra_debug_sigprint();
+  
+  Cube<eT>& Q = const_cast< Cube<eT>& >(m);
+  
+  const uword start_col   = aux_col1;
+  const uword start_row   = aux_row1;
+  const uword start_slice = aux_slice1;
+  
+  const uword end_col_plus1   = start_col   + n_cols;
+  const uword end_row_plus1   = start_row   + n_rows;
+  const uword end_slice_plus1 = start_slice + n_slices;
+  
+  for(uword uslice = start_slice; uslice < end_slice_plus1; ++uslice)
+  for(uword ucol   = start_col;     ucol < end_col_plus1;   ++ucol  )
+  for(uword urow   = start_row;     urow < end_row_plus1;   ++urow  )
+    {
+    Q.at(urow, ucol, uslice) = eT( F( Q.at(urow, ucol, uslice) ) );
+    }
+  }
+
+
+
+//! imbue (fill) the subview with values provided by a functor
+template<typename eT>
+template<typename functor>
+inline
+void
+subview_cube<eT>::imbue(functor F)
+  {
+  arma_extra_debug_sigprint();
+  
+  Cube<eT>& Q = const_cast< Cube<eT>& >(m);
+  
+  const uword start_col   = aux_col1;
+  const uword start_row   = aux_row1;
+  const uword start_slice = aux_slice1;
+  
+  const uword end_col_plus1   = start_col   + n_cols;
+  const uword end_row_plus1   = start_row   + n_rows;
+  const uword end_slice_plus1 = start_slice + n_slices;
+  
+  for(uword uslice = start_slice; uslice < end_slice_plus1; ++uslice)
+  for(uword ucol   = start_col;     ucol < end_col_plus1;   ++ucol  )
+  for(uword urow   = start_row;     urow < end_row_plus1;   ++urow  )
+    {
+    Q.at(urow, ucol, uslice) = eT( F() );
+    }
+  }
+
+
+
 template<typename eT>
 inline
 void
@@ -890,7 +962,6 @@ subview_cube<eT>::fill(const eT val)
       arrayops::inplace_set( slice_colptr(slice,col), val, local_n_rows );
       }
     }
-  
   }
 
 
@@ -902,7 +973,17 @@ subview_cube<eT>::zeros()
   {
   arma_extra_debug_sigprint();
   
-  fill(eT(0));
+  const uword local_n_rows   = n_rows;
+  const uword local_n_cols   = n_cols;
+  const uword local_n_slices = n_slices;
+  
+  for(uword slice = 0; slice < local_n_slices; ++slice)
+    {
+    for(uword col = 0; col < local_n_cols; ++col)
+      {
+      arrayops::fill_zeros( slice_colptr(slice,col), local_n_rows );
+      }
+    }
   }
 
 
@@ -915,6 +996,16 @@ subview_cube<eT>::ones()
   arma_extra_debug_sigprint();
   
   fill(eT(1));
+  }
+
+
+
+template<typename eT>
+inline
+eT
+subview_cube<eT>::at_alt(const uword i) const
+  {
+  return operator[](i);
   }
 
 

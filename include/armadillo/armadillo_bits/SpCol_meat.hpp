@@ -1,14 +1,9 @@
 // Copyright (C) 2011-2012 Ryan Curtin
 // Copyright (C) 2011 Matthew Amidon
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup SpCol
@@ -28,7 +23,7 @@ SpCol<eT>::SpCol()
 
 
 
-//! construct a column vector with the specified number of n_elem
+//! construct a column vector with the specified number of elements
 template<typename eT>
 inline
 SpCol<eT>::SpCol(const uword in_n_elem)
@@ -351,7 +346,7 @@ SpCol<eT>::shed_row(const uword row_num)
   {
   arma_extra_debug_sigprint();
 
-  arma_debug_check( row_num >= SpMat<eT>::n_rows, "Col::shed_row(): out of bounds");
+  arma_debug_check( row_num >= SpMat<eT>::n_rows, "SpCol::shed_row(): out of bounds");
   
   shed_rows(row_num, row_num);
   }
@@ -369,7 +364,7 @@ SpCol<eT>::shed_rows(const uword in_row1, const uword in_row2)
   arma_debug_check
     (
     (in_row1 > in_row2) || (in_row2 >= SpMat<eT>::n_rows),
-    "Col::shed_rows(): indices out of bounds or incorrectly used"
+    "SpCol::shed_rows(): indices out of bounds or incorrectly used"
     );
   
   const uword diff = (in_row2 - in_row1 + 1);
@@ -535,6 +530,7 @@ SpCol<eT>::end_row(const uword row_num) const
   
   return const_row_iterator(*this, row_num + 1, 0);
   }
+
 
 
 #ifdef ARMA_EXTRA_SPCOL_MEAT

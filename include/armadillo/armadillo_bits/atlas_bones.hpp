@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2011 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2011 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 #ifdef ARMA_USE_ATLAS
@@ -22,6 +17,8 @@ namespace atlas
   using ::CblasNoTrans;
   using ::CblasTrans;
   using ::CblasConjTrans;
+  using ::CblasLower;
+  using ::CblasUpper;
   
   #if defined(ARMA_USE_WRAPPER)
   extern "C"
@@ -63,6 +60,27 @@ namespace atlas
     void wrapper_cblas_zgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_TRANSPOSE TransB,
                              const int M, const int N, const int K, const void *alpha,
                              const void *A, const int lda, const void *B, const int ldb, const void *beta, void *C, const int ldc);
+    
+    
+    
+    void wrapper_cblas_ssyrk(const enum CBLAS_ORDER Order, const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE Trans,
+                             const int N, const int K, const float alpha,
+                             const float *A, const int lda, const float beta, float *C, const int ldc);
+    
+    void wrapper_cblas_dsyrk(const enum CBLAS_ORDER Order, const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE Trans,
+                             const int N, const int K, const double alpha,
+                             const double *A, const int lda, const double beta, double *C, const int ldc);
+    
+    
+    
+    void wrapper_cblas_cherk(const enum CBLAS_ORDER Order, const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE Trans,
+                             const int N, const int K, const float alpha,
+                             const void *A, const int lda, const float beta, void *C, const int ldc);
+    
+    void wrapper_cblas_zherk(const enum CBLAS_ORDER Order, const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE Trans,
+                             const int N, const int K, const double alpha,
+                             const void *A, const int lda, const double beta, void *C, const int ldc);
+    
     
     
     int wrapper_clapack_sgetrf(const enum CBLAS_ORDER Order, const int M, const int N, float  *A, const int lda, int *ipiv);

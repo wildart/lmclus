@@ -45,7 +45,11 @@ void specifyCommandLineParameters(cmdline::parser &cmdOpt)
     cmdOpt.add<char>(SEP, 's', "separator in output file", false, ','); 
     cmdOpt.add(SKIP, 'S', "skip faulty records");   
 }
-    
+
+void progress(const char *msg){
+    printf("MSG: %s\n", msg);
+}
+
 int main ( int argc, char *argv[] )
 {
     cmdline::parser cmdOpt;
@@ -82,7 +86,7 @@ int main ( int argc, char *argv[] )
     clustering::lmclus::Parameters params;
     params.MAX_DIM = static_cast<int>(ini.GetLongValue(SECTION, "MAX_DIM", 2));
     params.NUM_OF_CLUS = static_cast<int>(ini.GetLongValue(SECTION, "NUM_OF_CLUS", 2));
-    params.LABELED_DATA = static_cast<int>(ini.GetLongValue(SECTION, "LABELED_DATA", 1));
+    params.LABEL_COL = static_cast<int>(ini.GetLongValue(SECTION, "LABEL_COL", 0));
     params.CONST_SIZE_HIS = static_cast<int>(ini.GetLongValue(SECTION, "CONST_SIZE_HIS", 0));
     params.NOISE_SIZE = static_cast<unsigned int>(ini.GetLongValue(SECTION, "NOISE_SIZE", 2));
     params.BEST_BOUND = ini.GetDoubleValue(SECTION, "BEST_BOUND", 1.0);
@@ -97,23 +101,28 @@ int main ( int argc, char *argv[] )
     
     // Load dataset
     arma::mat data;
+    arma::vec original_labels;
     data.load(inputDataFile, arma::csv_ascii);
     //data = arma::randu<arma::mat>(100,11);
+    if (params.LABEL_COL > 0 && params.LABEL_COL <= data.n_cols){
+        LOG_INFO(log) << "Labels in column " << params.LABEL_COL << " will be removed";
+        original_labels = data.col(params.LABEL_COL-1);
+        data.shed_col(params.LABEL_COL-1);
+    }
     
     LOG_INFO(log) << "Parameters file: " << parametersFile;
-    LOG_INFO(log) << "Parameters: " << params;
+    LOG_INFO(log) << "Parameters: \n" << params;
     LOG_INFO(log) << "Input: " << inputDataFile;
     LOG_INFO(log) << "Input rows: " << data.n_rows;
     LOG_INFO(log) << "Input cols: " << data.n_cols;
+    //LOG_INFO(log) << "Data: \n" << data;
     
-    TEST(log, data.n_cols == 11, "Invalid column number")
-    TEST(log, data.n_rows == 3000, "Invalid row number")
+    //TEST(log, data.n_cols == 11, "Invalid column number")
+    //TEST(log, data.n_rows == 3000, "Invalid row number")    
+    //TEST(log, data.n_cols == 10, "Invalid column number")
     
-    auto original_labels = data.col(data.n_cols-1);
-    data.shed_col(data.n_cols-1);
-    TEST(log, data.n_cols == 10, "Invalid column number")
-    
-    TEST(log, params.MAX_DIM < static_cast<int>(data.n_cols), "Linear manifold dimension must be less than the dimension of the data !!!")
+    TEST(log, params.MAX_DIM < static_cast<int>(data.n_cols), 
+        "Linear manifold dimension must be less than the dimension of the data !!!")
 
     // Process data
     clustering::lmclus::LMCLUS lmclus(log);
@@ -121,14 +130,16 @@ int main ( int argc, char *argv[] )
     std::vector<double> thresholds; 
     std::vector<arma::mat> basises; 
     std::vector<int> clusterDims;
-    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims);
+    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims, progress);
     
     // Process results
     size_t clusterNum = labels.size();
     TEST(log, clusterDims.size() == clusterNum, "Invalid number of clusters")
     for(size_t i=0; i < clusterNum; ++i)
     {
-        LOG_INFO(log) << "Cluster " << i << " dimension: " << clusterDims[i] << ", size: " << labels[i].n_elem;
+        LOG_INFO(log) << "Cluster " << i << " dimension: " << clusterDims[i] << ", size: " << labels[i].n_elem <<"\n";
+        //LOG_INFO(log) << "Labels: " << labels[i].t();
+        LOG_INFO(log) << "Basis: \n"<< basises[i];
     }
     
     LOG_INFO(log) << "labels found: " << labels.size();

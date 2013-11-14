@@ -2,14 +2,9 @@
 // Copyright (C) 2011 Matthew Amidon
 // Copyright (C) 2012 Conrad Sanderson
 //
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose.  You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 //! \addtogroup SpSubview
 //! @{
@@ -234,7 +229,7 @@ class SpSubview : public SpBase<eT, SpSubview<eT> >
 
     inline iterator(SpSubview& in_M, const uword initial_pos = 0) : const_iterator(in_M, initial_pos) { }
     inline iterator(SpSubview& in_M, const uword in_row, const uword in_col) : const_iterator(in_M, in_row, in_col) { }
-    inline iterator(SpSubview& in_M, const uword in_row, const uword in_col, const uword in_pos, const uword skip_pos) : const_iterator(in_M, in_row, in_col, in_pos, skip_pos) { }
+    inline iterator(SpSubview& in_M, const uword in_row, const uword in_col, const uword in_pos, const uword in_skip_pos) : const_iterator(in_M, in_row, in_col, in_pos, in_skip_pos) { }
     inline iterator(const iterator& other) : const_iterator(other) { }
 
     inline SpValProxy<SpSubview<eT> > operator*();

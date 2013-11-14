@@ -107,7 +107,7 @@ struct Parameters
 {
     int MAX_DIM;
     int NUM_OF_CLUS;
-    int LABELED_DATA;
+    unsigned int LABEL_COL;
     int CONST_SIZE_HIS;
     unsigned int NOISE_SIZE;
     double BEST_BOUND;
@@ -126,7 +126,7 @@ struct Parameters
         o<<"NUM_OF_CLUS="<<p.NUM_OF_CLUS<<std::endl;
         o<<"BEST_BOUND="<<p.BEST_BOUND<<std::endl;
         o<<"ERROR_BOUND="<<p.ERROR_BOUND<<std::endl;
-        o<<"LABELED_DATA="<<p.LABELED_DATA<<std::endl;
+        o<<"LABEL_COL="<<p.LABEL_COL<<std::endl;
         o<<"CONST_SIZE_HIS="<<p.CONST_SIZE_HIS<<std::endl;
         o<<"MAX_BIN_PORTION="<<p.MAX_BIN_PORTION<<std::endl;
         o<<"NOISE_SIZE="<<p.NOISE_SIZE<<std::endl;
@@ -141,6 +141,7 @@ struct Parameters
 
 };
 
+typedef void (*callback_t) (const char *);
 
 class LMCLUS
 {
@@ -154,7 +155,7 @@ private:
     arma::uvec sample(const int n, const int k);
 
     // basis generation functions
-    std::pair<arma::rowvec, arma::mat> formBasis(const arma::mat &points);
+    arma::mat formBasis(const arma::mat &points, const arma::rowvec& origin);
     arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
         
     // spearation detection functions
@@ -190,7 +191,9 @@ public:
     }
     
     void cluster(const arma::mat &data, const Parameters &para, 
-                 std::vector<arma::uvec> &labels, std::vector<double> &thresholds, std::vector<arma::mat> &basises, std::vector<int> &clusterDims);
+                 std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
+                 std::vector<arma::mat> &bases, std::vector<int> &clusterDims,
+                 callback_t progress = nullptr);
 };
 
 } // lmclus namespace

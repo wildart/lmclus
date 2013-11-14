@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup access
@@ -26,6 +21,10 @@ class access
   //! internal function to obtain the real part of either a plain number or a complex number
   template<typename eT> arma_inline static const eT& tmp_real(const eT&              X) { return X;        }
   template<typename  T> arma_inline static const   T tmp_real(const std::complex<T>& X) { return X.real(); }
+  
+  //! internal function to work around braindead compilers
+  template<typename eT> arma_inline static const typename enable_if2<is_not_complex<eT>::value, const eT&>::result alt_conj(const eT& X) { return X;            }
+  template<typename eT> arma_inline static const typename enable_if2<    is_complex<eT>::value, const eT >::result alt_conj(const eT& X) { return std::conj(X); }
   };
 
 

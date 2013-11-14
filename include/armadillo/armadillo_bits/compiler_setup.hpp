@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 
@@ -17,6 +12,7 @@
 #define arma_pure
 #define arma_const
 #define arma_aligned
+#define arma_align_mem
 #define arma_warn_unused
 #define arma_deprecated
 #define arma_malloc
@@ -48,6 +44,16 @@
 #define ARMA_INCFILE_WRAP(x) <x>
 
 
+#if ( ((_POSIX_C_SOURCE >= 200112L) || (_XOPEN_SOURCE >= 600)) && !defined(__MINGW32__) && !defined(__APPLE__) )
+  #define ARMA_HAVE_POSIX_MEMALIGN
+#endif
+
+
+#if defined(__APPLE__)
+  #define ARMA_BLAS_SDOT_BUG
+#endif
+
+
 #if (__cplusplus >= 201103L)
   #if !defined(ARMA_USE_CXX11)
     #define ARMA_USE_CXX11
@@ -69,17 +75,65 @@
 #endif
 
 
+#if defined (__GNUG__)
+  #define ARMA_FNSIG  __PRETTY_FUNCTION__
+#elif defined (_MSC_VER)
+  #define ARMA_FNSIG  __FUNCSIG__ 
+#elif defined(__INTEL_COMPILER)
+  #define ARMA_FNSIG  __FUNCTION__
+#elif defined(ARMA_USE_CXX11)
+  #define ARMA_FNSIG  __func__
+#else 
+  #define ARMA_FNSIG  "(unknown)"
+#endif
+
+
 #if defined(__INTEL_COMPILER)
   
   #if (__INTEL_COMPILER < 1000)
     #error "*** Need a newer compiler ***"
   #endif
   
-  #define ARMA_GOOD_COMPILER
-  #undef  ARMA_HAVE_STD_TR1
-  
   #if (__INTEL_COMPILER <= 1110)
     #undef ARMA_HAVE_STD_ISFINITE
+  #endif
+  
+  #undef  ARMA_HAVE_STD_TR1
+  
+  #define ARMA_GOOD_COMPILER
+  #define ARMA_HAVE_ICC_ASSUME_ALIGNED
+  
+  #if defined(__GNUG__)
+    
+    // #undef  arma_aligned
+    // #define arma_aligned __attribute__((aligned))
+    
+    #undef  arma_align_mem
+    #define arma_align_mem __attribute__((aligned(16)))
+    
+    #define ARMA_HAVE_ALIGNED_ATTRIBUTE
+    
+  #elif defined(_MSC_VER)
+    
+    // #if (_MANAGED == 1) || (_M_CEE == 1)
+    //   
+    //   // don't do any alignment when compiling in "managed code" mode 
+    //   
+    //   #undef  arma_aligned
+    //   #define arma_aligned
+    //   
+    //   #undef  arma_align_mem
+    //   #define arma_align_mem
+    //   
+    // #elif (_MSC_VER >= 1700)
+    //   
+    //   #undef  arma_align_mem
+    //   #define arma_align_mem __declspec(align(16))
+    //   
+    //   #define ARMA_HAVE_ALIGNED_ATTRIBUTE
+    //   
+    // #endif
+    
   #endif
   
 #elif defined(__GNUG__)
@@ -96,6 +150,7 @@
   #undef  arma_pure
   #undef  arma_const
   #undef  arma_aligned
+  #undef  arma_align_mem
   #undef  arma_warn_unused
   #undef  arma_deprecated
   #undef  arma_malloc
@@ -105,11 +160,14 @@
   #define arma_pure               __attribute__((__pure__))
   #define arma_const              __attribute__((__const__))
   #define arma_aligned            __attribute__((__aligned__))
+  #define arma_align_mem          __attribute__((__aligned__(16)))
   #define arma_warn_unused        __attribute__((__warn_unused_result__))
   #define arma_deprecated         __attribute__((__deprecated__))
   #define arma_malloc             __attribute__((__malloc__))
   #define arma_inline      inline __attribute__((__always_inline__))
   #define arma_noinline           __attribute__((__noinline__))
+  
+  #define ARMA_HAVE_ALIGNED_ATTRIBUTE
   
   #if (ARMA_GCC_VERSION >= 40300)
     #undef  arma_hot
@@ -139,21 +197,17 @@
   #endif
   
   #if ( (ARMA_GCC_VERSION >= 40700) && (ARMA_GCC_VERSION <= 40701) )
-    #define ARMA_GCC47_BUG
-    
-    #warning "*** Detected GCC 4.7.0 / 4.7.1, which has a regression (bug)"
-    #warning "*** See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53549   "
-    #warning "*** A partial workaround for the bug has been activated,    " 
-    #warning "*** which reduces some functionality in fixed-size matrices "
+    #error "gcc versions 4.7.0 and 4.7.1 are unsupported; use 4.7.2 or later"
+    // due to http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53549
+  #endif
+  
+  #if (ARMA_GCC_VERSION >= 40700)
+    #define ARMA_HAVE_GCC_ASSUME_ALIGNED
+    // TODO: future versions of clang may also have __builtin_assume_aligned
   #endif
   
   #undef ARMA_GCC_VERSION
   
-#endif
-
-
-#if defined(__APPLE__)
-  #define ARMA_BLAS_SDOT_BUG
 #endif
 
 
@@ -171,12 +225,46 @@
   #undef ARMA_HAVE_STD_ISNAN
   #undef ARMA_HAVE_STD_TR1
   
-  #undef  arma_inline
-  #define arma_inline inline __forceinline
+  // #undef  arma_inline
+  // #define arma_inline inline __forceinline
   
-  // #if (_MSC_VER >= 1400)
+  #pragma warning(push)
+  
+  #pragma warning(disable: 4127)  // conditional expression is constant
+  #pragma warning(disable: 4510)  // default constructor could not be generated
+  #pragma warning(disable: 4511)  // copy constructor can't be generated
+  #pragma warning(disable: 4512)  // assignment operator can't be generated
+  #pragma warning(disable: 4513)  // destructor can't be generated
+  #pragma warning(disable: 4514)  // unreferenced inline function has been removed
+  #pragma warning(disable: 4522)  // multiple assignment operators specified
+  #pragma warning(disable: 4623)  // default constructor can't be generated
+  #pragma warning(disable: 4624)  // destructor can't be generated
+  #pragma warning(disable: 4625)  // copy constructor can't be generated
+  #pragma warning(disable: 4626)  // assignment operator can't be generated
+  #pragma warning(disable: 4710)  // function not inlined
+  #pragma warning(disable: 4711)  // call was inlined
+  #pragma warning(disable: 4714)  // __forceinline can't be inlined
+  
+  // #if (_MANAGED == 1) || (_M_CEE == 1)
+  //   
+  //   // don't do any alignment when compiling in "managed code" mode 
+  //   
   //   #undef  arma_aligned
-  //   #define arma_aligned __declspec(align(16))
+  //   #define arma_aligned
+  //   
+  //   #undef  arma_align_mem
+  //   #define arma_align_mem
+  //  
+  // #elif (_MSC_VER >= 1700)
+  //   
+  //   #undef  arma_align_mem
+  //   #define arma_align_mem __declspec(align(16))
+  //   
+  //   #define ARMA_HAVE_ALIGNED_ATTRIBUTE
+  //   
+  //   // disable warnings: "structure was padded due to __declspec(align(16))"
+  //   #pragma warning(disable: 4324)
+  //   
   // #endif
   
 #endif

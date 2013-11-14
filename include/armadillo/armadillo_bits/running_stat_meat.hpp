@@ -1,14 +1,9 @@
-// Copyright (C) 2009-2011 NICTA (www.nicta.com.au)
 // Copyright (C) 2009-2011 Conrad Sanderson
+// Copyright (C) 2009-2011 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup running_stat
@@ -174,7 +169,7 @@ running_stat<eT>::operator() (const std::complex< typename running_stat<eT>::T >
   {
   arma_extra_debug_sigprint();
   
-  arma_type_check(( is_same_type<eT, std::complex< typename running_stat<eT>::T > >::value == false ));
+  arma_type_check(( is_same_type<eT, std::complex< typename running_stat<eT>::T > >::no ));
   
   if( arma_isfinite(sample) == false )
     {
@@ -378,8 +373,6 @@ void
 running_stat_aux::update_stats(running_stat< std::complex<T> >& x, const std::complex<T>& sample)
   {
   arma_extra_debug_sigprint();
-  
-  typedef typename std::complex<T> eT;
   
   const T sample_norm = std::norm(sample);
   const T N           = x.counter.value();

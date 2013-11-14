@@ -20,14 +20,18 @@
 #include <R.h>
 #include <Rdefines.h>
 
+void output_callback(const char *msg){
+    Rprintf("%s\n", msg);
+}
+
 extern "C" {
 SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound, SEXP errorBound, 
 	    SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize, SEXP sampleHeuristic, 
 	    SEXP sampleFactor, SEXP randomSeed, SEXP showLog) 
 {
     Rprintf("Linear manifold clustering...\n"); 
-    int n, k, nprotect = 0, show_log;
-    size_t i, j;
+    int n, m, nprotect = 0, show_log;
+    size_t i, j, k;
     
     cpplog::StringLogger log;
     try{   
@@ -51,24 +55,29 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     // get dataset
     SEXP Rdim = getAttrib(Xs, R_DimSymbol);
     n = INTEGER(Rdim)[0];
-    k = INTEGER(Rdim)[1];
+    m = INTEGER(Rdim)[1];
     Xs = AS_NUMERIC(Xs);
-    arma::mat data(REAL(Xs), n, k, false);
-    Rprintf("Data dims: (%d, %d)\n", n, k);
+    arma::mat data(REAL(Xs), n, m, false);
+    Rprintf("Data dims: (%d, %d)\n", n, m);
+
+    if(params.MAX_DIM >= m){ 
+        Rprintf("Linear manifold dimension must be less than the dimension of the data !!!\n");
+        return R_NilValue;
+    }
     
     std::vector<arma::uvec> labels;
     std::vector<double> thresholds; 
-    std::vector<arma::mat> basises; 
+    std::vector<arma::mat> bases; 
     std::vector<int> clusterDims;
     
     clustering::lmclus::LMCLUS lmclus(&log); 
-    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims);
+    lmclus.cluster(data, params, labels, thresholds, bases, clusterDims, output_callback);
     if (show_log)
         Rprintf("%s", log.getString().c_str());
     
     Rprintf("Clusters found: %d\n", labels.size());
     
-    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels;
+    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases;
     
      // Thresholds
     PROTECT(Rthresholds = allocVector(REALSXP,thresholds.size())); nprotect++;
@@ -90,21 +99,38 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
         SET_VECTOR_ELT(Rlabels, i, lbls);
     }
     
+    // bases
+    PROTECT(Rbases = allocVector(VECSXP,bases.size())); nprotect++;
+    for (i = 0; i < bases.size(); ++i){
+        int r = bases[i].n_rows, c = bases[i].n_cols;
+        SEXP bss, dimnames;
+        PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;
+        //PROTECT(dimnames = allocVector(VECSXP, 2)); nprotect++;
+        //SET_VECTOR_ELT(dimnames, 0, r);
+        //SET_VECTOR_ELT(dimnames, 1, c);
+        //setAttrib(bss, R_DimNamesSymbol, dimnames);
+        for (j = 0; j < r; ++j)
+            for (k = 0; k < c; ++k)
+                REAL(bss)[j+r*k] = bases[i].at(j, k);
+        SET_VECTOR_ELT(Rbases, i, bss);
+    }
+    
     // Result list
-    PROTECT(Return_lst = allocVector(VECSXP,3)); nprotect++;
+    PROTECT(Return_lst = allocVector(VECSXP,4)); nprotect++;
     
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(3)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(4)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("thresholds"));
     SET_STRING_ELT(Rnames, 1, mkChar("cluster_dimensions"));
     SET_STRING_ELT(Rnames, 2, mkChar("clusters"));
-    //SET_STRING_ELT(Rnames, 3, mkChar("basis"));
+    SET_STRING_ELT(Rnames, 3, mkChar("bases"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
     SET_VECTOR_ELT(Return_lst, 0, Rthresholds);
     SET_VECTOR_ELT(Return_lst, 1, RclusterDims);
     SET_VECTOR_ELT(Return_lst, 2, Rlabels);
+    SET_VECTOR_ELT(Return_lst, 3, Rbases);
     
     UNPROTECT(nprotect);
     return Return_lst;

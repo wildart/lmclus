@@ -1,15 +1,12 @@
 // Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2012 Conrad Sanderson
 // Copyright (C) 2009-2010 Ian Cullinan
+// Copyright (C) 2012 Ryan Curtin
+// Copyright (C) 2013 Szabolcs Horvat
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup diskio
@@ -117,6 +114,7 @@ class diskio
   template<typename eT> inline static bool save_raw_binary (const Cube<eT>& x, const std::string& name);
   template<typename eT> inline static bool save_arma_ascii (const Cube<eT>& x, const std::string& name);
   template<typename eT> inline static bool save_arma_binary(const Cube<eT>& x, const std::string& name);
+  template<typename eT> inline static bool save_hdf5_binary(const Cube<eT>& x, const std::string& name);
   
   template<typename eT> inline static bool save_raw_ascii  (const Cube<eT>& x, std::ostream& f);
   template<typename eT> inline static bool save_raw_binary (const Cube<eT>& x, std::ostream& f);
@@ -131,6 +129,7 @@ class diskio
   template<typename eT> inline static bool load_raw_binary (Cube<eT>& x, const std::string& name, std::string& err_msg);
   template<typename eT> inline static bool load_arma_ascii (Cube<eT>& x, const std::string& name, std::string& err_msg);
   template<typename eT> inline static bool load_arma_binary(Cube<eT>& x, const std::string& name, std::string& err_msg);
+  template<typename eT> inline static bool load_hdf5_binary(Cube<eT>& x, const std::string& name, std::string& err_msg);
   template<typename eT> inline static bool load_auto_detect(Cube<eT>& x, const std::string& name, std::string& err_msg);
   
   template<typename eT> inline static bool load_raw_ascii  (Cube<eT>& x, std::istream& f, std::string& err_msg);

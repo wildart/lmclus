@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2011 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2011 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup Cube
@@ -51,8 +46,8 @@ class Cube : public BaseCube< eT, Cube<eT> >
   arma_aligned const eT*       const mem;      //!< pointer to the memory used by the cube (memory is read-only)
   
   protected:
-  arma_aligned Mat<eT>* mat_ptrs_local[ Cube_prealloc::mat_ptrs_size ];
-  arma_aligned eT            mem_local[ Cube_prealloc::mem_n_elem    ];
+  arma_align_mem Mat<eT>* mat_ptrs_local[ Cube_prealloc::mat_ptrs_size ];
+  arma_align_mem eT            mem_local[ Cube_prealloc::mem_n_elem    ];
   
   
   public:
@@ -61,6 +56,14 @@ class Cube : public BaseCube< eT, Cube<eT> >
   inline  Cube();
   
   inline Cube(const uword in_rows, const uword in_cols, const uword in_slices);
+  
+  template<typename fill_type>
+  inline Cube(const uword in_rows, const uword in_cols, const uword in_slices, const fill::fill_class<fill_type>& f);
+  
+  #if defined(ARMA_USE_CXX11)
+  inline                  Cube(Cube&& m);
+  inline const Cube& operator=(Cube&& m);
+  #endif
   
   inline Cube(      eT* aux_mem, const uword aux_n_rows, const uword aux_n_cols, const uword aux_n_slices, const bool copy_aux_mem = true, const bool strict = true);
   inline Cube(const eT* aux_mem, const uword aux_n_rows, const uword aux_n_cols, const uword aux_n_slices);
@@ -102,6 +105,15 @@ class Cube : public BaseCube< eT, Cube<eT> >
   
   inline            subview_cube<eT> operator()(const span& row_span, const span& col_span, const span& slice_span);
   inline      const subview_cube<eT> operator()(const span& row_span, const span& col_span, const span& slice_span) const;
+  
+  arma_inline       subview_cube<eT> tube(const uword in_row1, const uword in_col1);
+  arma_inline const subview_cube<eT> tube(const uword in_row1, const uword in_col1) const;
+  
+  arma_inline       subview_cube<eT> tube(const uword in_row1, const uword in_col1, const uword in_row2, const uword in_col2);
+  arma_inline const subview_cube<eT> tube(const uword in_row1, const uword in_col1, const uword in_row2, const uword in_col2) const;
+  
+  inline            subview_cube<eT> tube(const span& row_span, const span& col_span);
+  inline      const subview_cube<eT> tube(const span& row_span, const span& col_span) const;
   
   
   inline void shed_slice(const uword slice_num);
@@ -164,20 +176,22 @@ class Cube : public BaseCube< eT, Cube<eT> >
   template<typename T1, typename T2, typename glue_type> inline const Cube& operator/=(const mtGlueCube<eT, T1, T2, glue_type>& X);
   
   
-  arma_inline arma_warn_unused eT& operator[] (const uword i);
-  arma_inline arma_warn_unused eT  operator[] (const uword i) const;
+  arma_inline arma_warn_unused const eT& at_alt     (const uword i) const;
   
-  arma_inline arma_warn_unused eT& at(const uword i);
-  arma_inline arma_warn_unused eT  at(const uword i) const;
+  arma_inline arma_warn_unused       eT& operator[] (const uword i);
+  arma_inline arma_warn_unused const eT& operator[] (const uword i) const;
   
-  arma_inline arma_warn_unused eT& operator() (const uword i);
-  arma_inline arma_warn_unused eT  operator() (const uword i) const;
+  arma_inline arma_warn_unused       eT& at(const uword i);
+  arma_inline arma_warn_unused const eT& at(const uword i) const;
   
-  arma_inline arma_warn_unused eT& at         (const uword in_row, const uword in_col, const uword in_slice);
-  arma_inline arma_warn_unused eT  at         (const uword in_row, const uword in_col, const uword in_slice) const;
+  arma_inline arma_warn_unused       eT& operator() (const uword i);
+  arma_inline arma_warn_unused const eT& operator() (const uword i) const;
   
-  arma_inline arma_warn_unused eT& operator() (const uword in_row, const uword in_col, const uword in_slice);
-  arma_inline arma_warn_unused eT  operator() (const uword in_row, const uword in_col, const uword in_slice) const;
+  arma_inline arma_warn_unused       eT& at         (const uword in_row, const uword in_col, const uword in_slice);
+  arma_inline arma_warn_unused const eT& at         (const uword in_row, const uword in_col, const uword in_slice) const;
+  
+  arma_inline arma_warn_unused       eT& operator() (const uword in_row, const uword in_col, const uword in_slice);
+  arma_inline arma_warn_unused const eT& operator() (const uword in_row, const uword in_col, const uword in_slice) const;
   
   arma_inline const Cube& operator++();
   arma_inline void        operator++(int);
@@ -214,6 +228,14 @@ class Cube : public BaseCube< eT, Cube<eT> >
   inline void    resize(const uword in_rows, const uword in_cols, const uword in_slices);
   
   template<typename eT2> inline void copy_size(const Cube<eT2>& m);
+  
+  
+  template<typename functor>
+  inline const Cube& transform(functor F);
+  
+  template<typename functor>
+  inline const Cube& imbue(functor F);
+  
   
   inline const Cube& fill(const eT val);
   
@@ -267,19 +289,28 @@ class Cube : public BaseCube< eT, Cube<eT> >
   typedef       eT*       slice_iterator;
   typedef const eT* const_slice_iterator;
   
-  inline       iterator begin();
-  inline const_iterator begin() const;
+  inline       iterator  begin();
+  inline const_iterator  begin() const;
+  inline const_iterator cbegin() const;
   
-  inline       iterator end();
-  inline const_iterator end()   const;
+  inline       iterator  end();
+  inline const_iterator  end() const;
+  inline const_iterator cend() const;
   
   inline       slice_iterator begin_slice(const uword slice_num);
   inline const_slice_iterator begin_slice(const uword slice_num) const;
   
   inline       slice_iterator end_slice(const uword slice_num);
   inline const_slice_iterator end_slice(const uword slice_num)   const;
-
-
+  
+  inline void  clear();
+  inline bool  empty() const;
+  inline uword size()  const;
+  
+  // inline void swap(Cube& B); // TODO
+  
+  inline void steal_mem(Cube& X);  //!< don't use this unless you're writing code internal to Armadillo
+  
   template<uword fixed_n_rows, uword fixed_n_cols, uword fixed_n_slices> class fixed;
   
   
@@ -290,8 +321,6 @@ class Cube : public BaseCube< eT, Cube<eT> >
   
   template<typename T1, typename T2>
   inline void init(const BaseCube<pod_type,T1>& A, const BaseCube<pod_type,T2>& B);
-  
-  inline void steal_mem(Cube& X);
   
   inline void delete_mat();
   inline void create_mat();
@@ -316,32 +345,46 @@ class Cube<eT>::fixed : public Cube<eT>
   {
   private:
   
-  static const uword fixed_n_elem = fixed_n_rows * fixed_n_cols * fixed_n_slices;
+  static const uword fixed_n_elem       = fixed_n_rows * fixed_n_cols * fixed_n_slices;
+  static const uword fixed_n_elem_slice = fixed_n_rows * fixed_n_cols;
   
-  arma_aligned Mat<eT>* mat_ptrs_local_extra[ (fixed_n_slices > Cube_prealloc::mat_ptrs_size) ? fixed_n_slices : 1 ];
-  arma_aligned eT       mem_local_extra     [ (fixed_n_elem   > Cube_prealloc::mem_n_elem)    ? fixed_n_elem   : 1 ];
+  static const bool use_extra = (fixed_n_elem > Cube_prealloc::mem_n_elem);
+  
+  arma_aligned   Mat<eT>* mat_ptrs_local_extra[ (fixed_n_slices > Cube_prealloc::mat_ptrs_size) ? fixed_n_slices : 1 ];
+  arma_align_mem eT       mem_local_extra     [ use_extra                                       ? fixed_n_elem   : 1 ];
   
   arma_inline void mem_setup();
   
   
   public:
   
-  inline fixed() { mem_setup(); }
+  inline fixed();
+  inline fixed(const fixed<fixed_n_rows, fixed_n_cols, fixed_n_slices>& X);
   
-  inline const Cube& operator=(const eT val) { mem_setup(); Cube<eT>::operator=(val); return *this; }
+  template<typename fill_type>       inline fixed(const fill::fill_class<fill_type>& f);
+  template<typename T1>              inline fixed(const BaseCube<eT,T1>& A);
+  template<typename T1, typename T2> inline fixed(const BaseCube<pod_type,T1>& A, const BaseCube<pod_type,T2>& B);
   
-  template<typename T1>
-  inline fixed(const BaseCube<eT,T1>& A) { mem_setup(); Cube<eT>::operator=(A.get_ref()); }
+  using Cube<eT>::operator=;
+  using Cube<eT>::operator();
   
-  template<typename T1>
-  inline const Cube& operator=(const BaseCube<eT,T1>& A) { Cube<eT>::operator=(A.get_ref()); return *this; }
-  
-  template<typename T1, typename T2>
-  inline explicit fixed(const BaseCube<pod_type,T1>& A, const BaseCube<pod_type,T2>& B) { mem_setup(); Cube<eT>::init(A,B); }
+  inline const Cube& operator=(const fixed<fixed_n_rows, fixed_n_cols, fixed_n_slices>& X);
   
   
-  // using Cube<eT>::operator();
-  // TODO: overload operator(), operator[] and .at() to allow faster element access
+  arma_inline arma_warn_unused       eT& operator[] (const uword i);
+  arma_inline arma_warn_unused const eT& operator[] (const uword i) const;
+  
+  arma_inline arma_warn_unused       eT& at         (const uword i);
+  arma_inline arma_warn_unused const eT& at         (const uword i) const;
+  
+  arma_inline arma_warn_unused       eT& operator() (const uword i);
+  arma_inline arma_warn_unused const eT& operator() (const uword i) const;
+  
+  arma_inline arma_warn_unused       eT& at         (const uword in_row, const uword in_col, const uword in_slice);
+  arma_inline arma_warn_unused const eT& at         (const uword in_row, const uword in_col, const uword in_slice) const;
+  
+  arma_inline arma_warn_unused       eT& operator() (const uword in_row, const uword in_col, const uword in_slice);
+  arma_inline arma_warn_unused const eT& operator() (const uword in_row, const uword in_col, const uword in_slice) const;
   };
 
 

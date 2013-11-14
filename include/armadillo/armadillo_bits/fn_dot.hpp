@@ -1,15 +1,10 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2012 Ryan Curtin
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup fn_dot
@@ -22,7 +17,7 @@ arma_warn_unused
 typename
 enable_if2
   <
-  is_arma_type<T1>::value && is_arma_type<T2>::value && is_same_type<typename T1::elem_type, typename T2::elem_type>::value,
+  is_arma_type<T1>::value && is_arma_type<T2>::value && is_same_type<typename T1::elem_type, typename T2::elem_type>::yes,
   typename T1::elem_type
   >::result
 dot
@@ -34,6 +29,28 @@ dot
   arma_extra_debug_sigprint();
   
   return op_dot::apply(A,B);
+  }
+
+
+
+template<typename T1, typename T2>
+inline
+arma_warn_unused
+typename
+enable_if2
+  <
+  is_arma_type<T1>::value && is_arma_type<T2>::value && is_same_type<typename T1::elem_type, typename T2::elem_type>::no,
+  typename promote_type<typename T1::elem_type, typename T2::elem_type>::result
+  >::result
+dot
+  (
+  const T1& A,
+  const T2& B
+  )
+  {
+  arma_extra_debug_sigprint();
+  
+  return op_dot_mixed::apply(A,B);
   }
 
 

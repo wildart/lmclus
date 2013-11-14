@@ -1,14 +1,9 @@
 // Copyright (C) 2012 Ryan Curtin
 // Copyright (C) 2012 Conrad Sanderson
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup spglue_times
@@ -217,7 +212,7 @@ spglue_times::apply_noalias(SpMat<eT>& c, const SpProxy<T1>& pa, const SpProxy<T
       const uword tmp = last_ind;
 
       // Check that it wasn't a "fake" nonzero element.
-      if(sums[tmp] != 0)
+      if(sums[tmp] != eT(0))
         {
         // Assign to next open position.
         sorted_indices[cur_index] = tmp;

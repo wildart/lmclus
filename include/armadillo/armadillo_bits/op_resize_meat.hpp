@@ -1,14 +1,9 @@
-// Copyright (C) 2011 NICTA (www.nicta.com.au)
-// Copyright (C) 2011 Conrad Sanderson
+// Copyright (C) 2011-2013 Conrad Sanderson
+// Copyright (C) 2011-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 
@@ -35,10 +30,14 @@ op_resize::apply(Mat<typename T1::elem_type>& actual_out, const Op<T1,op_resize>
   const uword A_n_rows = A.n_rows;
   const uword A_n_cols = A.n_cols;
   
-  Mat<eT> B;
-  
   const bool alias = (&actual_out == &A);
   
+  if( alias && (A_n_rows == out_n_rows) && (A_n_cols == out_n_cols) )
+    {
+    return;
+    }
+  
+  Mat<eT>  B;
   Mat<eT>& out = alias ? B : actual_out;
   
   out.set_size(out_n_rows, out_n_cols);
@@ -60,7 +59,6 @@ op_resize::apply(Mat<typename T1::elem_type>& actual_out, const Op<T1,op_resize>
     {
     actual_out.steal_mem(B);
     }
-  
   }
 
 
@@ -85,10 +83,14 @@ op_resize::apply(Cube<typename T1::elem_type>& actual_out, const OpCube<T1,op_re
   const uword A_n_cols   = A.n_cols;
   const uword A_n_slices = A.n_slices;
   
-  Cube<eT> B;
-  
   const bool alias = (&actual_out == &A);
   
+  if( alias && (A_n_rows == out_n_rows) && (A_n_cols == out_n_cols) && (A_n_slices == out_n_slices) )
+    {
+    return;
+    }
+  
+  Cube<eT>  B;
   Cube<eT>& out = alias ? B : actual_out;
   
   out.set_size(out_n_rows, out_n_cols, out_n_slices);
@@ -111,7 +113,6 @@ op_resize::apply(Cube<typename T1::elem_type>& actual_out, const OpCube<T1,op_re
     {
     actual_out.steal_mem(B);
     }
-  
   }
 
 

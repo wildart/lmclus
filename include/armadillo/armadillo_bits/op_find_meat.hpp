@@ -1,15 +1,10 @@
-// Copyright (C) 2010 NICTA (www.nicta.com.au)
-// Copyright (C) 2010 Conrad Sanderson
+// Copyright (C) 2010-2013 Conrad Sanderson
+// Copyright (C) 2010-2013 NICTA (www.nicta.com.au)
 // Copyright (C) 2010 Dimitrios Bouzas
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 
@@ -29,12 +24,10 @@ op_find::helper
   {
   arma_extra_debug_sigprint();
   
-  typedef typename T1::elem_type      eT;
-  typedef typename Proxy<T1>::ea_type ea_type;
+  typedef typename T1::elem_type eT;
   
   const Proxy<T1> A(X.get_ref());
   
-  ea_type   PA     = A.get_ea();
   const uword n_elem = A.get_n_elem();
   
   indices.set_size(n_elem, 1);
@@ -42,15 +35,31 @@ op_find::helper
   uword* indices_mem = indices.memptr();
   uword  n_nz        = 0;
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    if(PA[i] != eT(0))
+    typename Proxy<T1>::ea_type PA = A.get_ea();
+    
+    for(uword i=0; i<n_elem; ++i)
       {
-      indices_mem[n_nz] = i;
-      ++n_nz;
+      if(PA[i] != eT(0))  { indices_mem[n_nz] = i;  ++n_nz; }
       }
     }
-   
+  else
+    {
+    const uword n_rows = A.get_n_rows();
+    const uword n_cols = A.get_n_cols();
+    
+    uword i = 0;
+    
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      if(A.at(row,col) != eT(0))  { indices_mem[n_nz] = i; ++n_nz; }
+      
+      ++i;
+      }
+    }
+  
   return n_nz;
   }
 
@@ -71,14 +80,12 @@ op_find::helper
   arma_ignore(junk1);
   arma_ignore(junk2);
   
-  typedef typename T1::elem_type      eT;
-  typedef typename Proxy<T1>::ea_type ea_type;
+  typedef typename T1::elem_type eT;
   
   const eT val = X.aux;
   
   const Proxy<T1> A(X.m);
   
-  ea_type   PA     = A.get_ea();
   const uword n_elem = A.get_n_elem();
   
   indices.set_size(n_elem, 1);
@@ -86,28 +93,97 @@ op_find::helper
   uword* indices_mem = indices.memptr();
   uword  n_nz        = 0;
   
-  for(uword i=0; i<n_elem; ++i)
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    const eT tmp = PA[i];
+    typename Proxy<T1>::ea_type PA = A.get_ea();
     
-    bool not_zero;
-    
-         if(is_same_type<op_type, op_rel_lt_pre   >::value == true)  { not_zero = (val <  tmp); }
-    else if(is_same_type<op_type, op_rel_lt_post  >::value == true)  { not_zero = (tmp <  val); }
-    else if(is_same_type<op_type, op_rel_gt_pre   >::value == true)  { not_zero = (val >  tmp); }
-    else if(is_same_type<op_type, op_rel_gt_post  >::value == true)  { not_zero = (tmp >  val); }
-    else if(is_same_type<op_type, op_rel_lteq_pre >::value == true)  { not_zero = (val <= tmp); }
-    else if(is_same_type<op_type, op_rel_lteq_post>::value == true)  { not_zero = (tmp <= val); }
-    else if(is_same_type<op_type, op_rel_gteq_pre >::value == true)  { not_zero = (val >= tmp); }
-    else if(is_same_type<op_type, op_rel_gteq_post>::value == true)  { not_zero = (tmp >= val); }
-    else if(is_same_type<op_type, op_rel_eq       >::value == true)  { not_zero = (tmp == val); }
-    else if(is_same_type<op_type, op_rel_noteq    >::value == true)  { not_zero = (tmp != val); }
-    else not_zero = false;
-    
-    if(not_zero == true)
+    uword i,j;
+    for(i=0, j=1; j < n_elem; i+=2, j+=2)
       {
-      indices_mem[n_nz] = i;
-      ++n_nz;
+      const eT tpi = PA[i];
+      const eT tpj = PA[j];
+      
+      bool not_zero_i;
+      bool not_zero_j;
+      
+           if(is_same_type<op_type, op_rel_lt_pre   >::yes)  { not_zero_i = (val <  tpi); }
+      else if(is_same_type<op_type, op_rel_lt_post  >::yes)  { not_zero_i = (tpi <  val); }
+      else if(is_same_type<op_type, op_rel_gt_pre   >::yes)  { not_zero_i = (val >  tpi); }
+      else if(is_same_type<op_type, op_rel_gt_post  >::yes)  { not_zero_i = (tpi >  val); }
+      else if(is_same_type<op_type, op_rel_lteq_pre >::yes)  { not_zero_i = (val <= tpi); }
+      else if(is_same_type<op_type, op_rel_lteq_post>::yes)  { not_zero_i = (tpi <= val); }
+      else if(is_same_type<op_type, op_rel_gteq_pre >::yes)  { not_zero_i = (val >= tpi); }
+      else if(is_same_type<op_type, op_rel_gteq_post>::yes)  { not_zero_i = (tpi >= val); }
+      else if(is_same_type<op_type, op_rel_eq       >::yes)  { not_zero_i = (tpi == val); }
+      else if(is_same_type<op_type, op_rel_noteq    >::yes)  { not_zero_i = (tpi != val); }
+      else not_zero_i = false;
+      
+           if(is_same_type<op_type, op_rel_lt_pre   >::yes)  { not_zero_j = (val <  tpj); }
+      else if(is_same_type<op_type, op_rel_lt_post  >::yes)  { not_zero_j = (tpj <  val); }
+      else if(is_same_type<op_type, op_rel_gt_pre   >::yes)  { not_zero_j = (val >  tpj); }
+      else if(is_same_type<op_type, op_rel_gt_post  >::yes)  { not_zero_j = (tpj >  val); }
+      else if(is_same_type<op_type, op_rel_lteq_pre >::yes)  { not_zero_j = (val <= tpj); }
+      else if(is_same_type<op_type, op_rel_lteq_post>::yes)  { not_zero_j = (tpj <= val); }
+      else if(is_same_type<op_type, op_rel_gteq_pre >::yes)  { not_zero_j = (val >= tpj); }
+      else if(is_same_type<op_type, op_rel_gteq_post>::yes)  { not_zero_j = (tpj >= val); }
+      else if(is_same_type<op_type, op_rel_eq       >::yes)  { not_zero_j = (tpj == val); }
+      else if(is_same_type<op_type, op_rel_noteq    >::yes)  { not_zero_j = (tpj != val); }
+      else not_zero_j = false;
+      
+      if(not_zero_i == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+      if(not_zero_j == true)  { indices_mem[n_nz] = j;  ++n_nz; }
+      }
+    
+    if(i < n_elem)
+      {
+      bool not_zero;
+      
+      const eT tmp = PA[i];
+      
+           if(is_same_type<op_type, op_rel_lt_pre   >::yes)  { not_zero = (val <  tmp); }
+      else if(is_same_type<op_type, op_rel_lt_post  >::yes)  { not_zero = (tmp <  val); }
+      else if(is_same_type<op_type, op_rel_gt_pre   >::yes)  { not_zero = (val >  tmp); }
+      else if(is_same_type<op_type, op_rel_gt_post  >::yes)  { not_zero = (tmp >  val); }
+      else if(is_same_type<op_type, op_rel_lteq_pre >::yes)  { not_zero = (val <= tmp); }
+      else if(is_same_type<op_type, op_rel_lteq_post>::yes)  { not_zero = (tmp <= val); }
+      else if(is_same_type<op_type, op_rel_gteq_pre >::yes)  { not_zero = (val >= tmp); }
+      else if(is_same_type<op_type, op_rel_gteq_post>::yes)  { not_zero = (tmp >= val); }
+      else if(is_same_type<op_type, op_rel_eq       >::yes)  { not_zero = (tmp == val); }
+      else if(is_same_type<op_type, op_rel_noteq    >::yes)  { not_zero = (tmp != val); }
+      else not_zero = false;
+      
+      if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+      }
+    }
+  else
+    {
+    const uword n_rows = A.get_n_rows();
+    const uword n_cols = A.get_n_cols();
+    
+    uword i = 0;
+    
+    for(uword col=0; col < n_cols; ++col)
+    for(uword row=0; row < n_rows; ++row)
+      {
+      const eT tmp = A.at(row,col);
+      
+      bool not_zero;
+      
+           if(is_same_type<op_type, op_rel_lt_pre   >::yes)  { not_zero = (val <  tmp); }
+      else if(is_same_type<op_type, op_rel_lt_post  >::yes)  { not_zero = (tmp <  val); }
+      else if(is_same_type<op_type, op_rel_gt_pre   >::yes)  { not_zero = (val >  tmp); }
+      else if(is_same_type<op_type, op_rel_gt_post  >::yes)  { not_zero = (tmp >  val); }
+      else if(is_same_type<op_type, op_rel_lteq_pre >::yes)  { not_zero = (val <= tmp); }
+      else if(is_same_type<op_type, op_rel_lteq_post>::yes)  { not_zero = (tmp <= val); }
+      else if(is_same_type<op_type, op_rel_gteq_pre >::yes)  { not_zero = (val >= tmp); }
+      else if(is_same_type<op_type, op_rel_gteq_post>::yes)  { not_zero = (tmp >= val); }
+      else if(is_same_type<op_type, op_rel_eq       >::yes)  { not_zero = (tmp == val); }
+      else if(is_same_type<op_type, op_rel_noteq    >::yes)  { not_zero = (tmp != val); }
+      else not_zero = false;
+      
+      if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+      
+      ++i;
       }
     }
   
@@ -138,7 +214,7 @@ op_find::helper
   
   const Proxy<T1> A(X.m);
   
-  ea_type   PA     = A.get_ea();
+  ea_type     PA     = A.get_ea();
   const uword n_elem = A.get_n_elem();
   
   indices.set_size(n_elem, 1);
@@ -152,15 +228,11 @@ op_find::helper
     
     bool not_zero;
     
-         if(is_same_type<op_type, op_rel_eq   >::value == true)  { not_zero = (tmp == val); }
-    else if(is_same_type<op_type, op_rel_noteq>::value == true)  { not_zero = (tmp != val); }
+         if(is_same_type<op_type, op_rel_eq   >::yes)  { not_zero = (tmp == val); }
+    else if(is_same_type<op_type, op_rel_noteq>::yes)  { not_zero = (tmp != val); }
     else not_zero = false;
     
-    if(not_zero == true)
-      {
-      indices_mem[n_nz] = i;
-      ++n_nz;
-      }
+    if(not_zero == true) { indices_mem[n_nz] = i;  ++n_nz; }
     }
   
   return n_nz;
@@ -196,8 +268,9 @@ op_find::helper
   
   arma_debug_assert_same_size(A, B, "relational operator");
   
-  ea_type1  PA     = A.get_ea();
-  ea_type2  PB     = B.get_ea();
+  ea_type1 PA = A.get_ea();
+  ea_type2 PB = B.get_ea();
+  
   const uword n_elem = B.get_n_elem();
   
   indices.set_size(n_elem, 1);
@@ -212,19 +285,15 @@ op_find::helper
     
     bool not_zero;
     
-         if(is_same_type<glue_type, glue_rel_lt    >::value == true)  { not_zero = (tmp1 <  tmp2); }
-    else if(is_same_type<glue_type, glue_rel_gt    >::value == true)  { not_zero = (tmp1 >  tmp2); }
-    else if(is_same_type<glue_type, glue_rel_lteq  >::value == true)  { not_zero = (tmp1 <= tmp2); }
-    else if(is_same_type<glue_type, glue_rel_gteq  >::value == true)  { not_zero = (tmp1 >= tmp2); }
-    else if(is_same_type<glue_type, glue_rel_eq    >::value == true)  { not_zero = (tmp1 == tmp2); }
-    else if(is_same_type<glue_type, glue_rel_noteq >::value == true)  { not_zero = (tmp1 != tmp2); }
+         if(is_same_type<glue_type, glue_rel_lt    >::yes)  { not_zero = (tmp1 <  tmp2); }
+    else if(is_same_type<glue_type, glue_rel_gt    >::yes)  { not_zero = (tmp1 >  tmp2); }
+    else if(is_same_type<glue_type, glue_rel_lteq  >::yes)  { not_zero = (tmp1 <= tmp2); }
+    else if(is_same_type<glue_type, glue_rel_gteq  >::yes)  { not_zero = (tmp1 >= tmp2); }
+    else if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (tmp1 == tmp2); }
+    else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (tmp1 != tmp2); }
     else not_zero = false;
     
-    if(not_zero == true)
-      {
-      indices_mem[n_nz] = i;
-      ++n_nz;
-      }
+    if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
     }
   
   return n_nz;
@@ -257,8 +326,9 @@ op_find::helper
   
   arma_debug_assert_same_size(A, B, "relational operator");
   
-  ea_type1  PA     = A.get_ea();
-  ea_type2  PB     = B.get_ea();
+  ea_type1 PA = A.get_ea();
+  ea_type2 PB = B.get_ea();
+  
   const uword n_elem = B.get_n_elem();
   
   indices.set_size(n_elem, 1);
@@ -270,15 +340,11 @@ op_find::helper
     {
     bool not_zero;
     
-         if(is_same_type<glue_type, glue_rel_eq    >::value == true)  { not_zero = (PA[i] == PB[i]); }
-    else if(is_same_type<glue_type, glue_rel_noteq >::value == true)  { not_zero = (PA[i] != PB[i]); }
+         if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (PA[i] == PB[i]); }
+    else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (PA[i] != PB[i]); }
     else not_zero = false;
     
-    if(not_zero == true)
-      {
-      indices_mem[n_nz] = i;
-      ++n_nz;
-      }
+    if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
     }
   
   return n_nz;
@@ -312,7 +378,7 @@ op_find::apply(Mat<uword>& out, const mtOp<uword, T1, op_find>& X)
     }
   else
     {
-    out.reset();
+    out.set_size(0,1);  // empty column vector
     }
   }
 

@@ -1,26 +1,22 @@
-// Copyright (C) 2010-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2010-2012 Conrad Sanderson
+// Copyright (C) 2010-2013 Conrad Sanderson
+// Copyright (C) 2010-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup eop_core
 //! @{
 
 
-#undef arma_applier_1
+#undef arma_applier_1u
+#undef arma_applier_1a
 #undef arma_applier_2
 #undef arma_applier_3
 #undef operatorA
 
-#define arma_applier_1(operatorA) \
+#define arma_applier_1u(operatorA) \
   {\
   uword i,j;\
   \
@@ -39,6 +35,29 @@
   if(i < n_elem)\
     {\
     out_mem[i] operatorA eop_core<eop_type>::process(P[i], k);\
+    }\
+  }
+
+
+#define arma_applier_1a(operatorA) \
+  {\
+  uword i,j;\
+  \
+  for(i=0, j=1; j<n_elem; i+=2, j+=2)\
+    {\
+    eT tmp_i = P.at_alt(i);\
+    eT tmp_j = P.at_alt(j);\
+    \
+    tmp_i = eop_core<eop_type>::process(tmp_i, k);\
+    tmp_j = eop_core<eop_type>::process(tmp_j, k);\
+    \
+    out_mem[i] operatorA tmp_i;\
+    out_mem[j] operatorA tmp_j;\
+    }\
+  \
+  if(i < n_elem)\
+    {\
+    out_mem[i] operatorA eop_core<eop_type>::process(P.at_alt(i), k);\
     }\
   }
 
@@ -134,12 +153,32 @@ eop_core<eop_type>::apply(Mat<typename T1::elem_type>& out, const eOp<T1, eop_ty
   
   if(Proxy<T1>::prefer_at_accessor == false)
     {
-    // for fixed-sized vectors with n_elem >= 6, using x.get_n_elem() directly can cause a mis-optimisation (slowdown) of the loop under GCC 4.4
-    const uword n_elem = (Proxy<T1>::is_fixed) ? ( (x.get_n_elem() <= 4) ? x.get_n_elem() : out.n_elem ) : out.n_elem;
+    const uword n_elem = (Proxy<T1>::is_fixed) ? x.get_n_elem() : out.n_elem;
     
-    typename Proxy<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(=);
+    //if(memory::is_aligned(out_mem))
+    if( memory::is_aligned(out_mem) && ((Proxy<T1>::is_fixed) ? (x.get_n_elem() >= 32) : true) )
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename Proxy<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(=);
+        }
+      else
+        {
+        typename Proxy<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(=);
+        }
+      }
+    else
+      {
+      typename Proxy<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(=);
+      }
     }
   else
     {
@@ -175,12 +214,31 @@ eop_core<eop_type>::apply_inplace_plus(Mat<typename T1::elem_type>& out, const e
   
   if(Proxy<T1>::prefer_at_accessor == false)
     {
-    // for fixed-sized vectors with n_elem >= 6, using x.get_n_elem() directly can cause a mis-optimisation (slowdown) of the loop under GCC 4.4
-    const uword n_elem = (Proxy<T1>::is_fixed) ? ( (x.get_n_elem() <= 4) ? x.get_n_elem() : out.n_elem ) : out.n_elem;
+    const uword n_elem = (Proxy<T1>::is_fixed) ? x.get_n_elem() : out.n_elem;
     
-    typename Proxy<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(+=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename Proxy<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(+=);
+        }
+      else
+        {
+        typename Proxy<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(+=);
+        }
+      }
+    else
+      {
+      typename Proxy<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(+=);
+      }
     }
   else
     {
@@ -213,12 +271,31 @@ eop_core<eop_type>::apply_inplace_minus(Mat<typename T1::elem_type>& out, const 
   
   if(Proxy<T1>::prefer_at_accessor == false)
     {
-    // for fixed-sized vectors with n_elem >= 6, using x.get_n_elem() directly can cause a mis-optimisation (slowdown) of the loop under GCC 4.4
-    const uword n_elem = (Proxy<T1>::is_fixed) ? ( (x.get_n_elem() <= 4) ? x.get_n_elem() : out.n_elem ) : out.n_elem;
+    const uword n_elem = (Proxy<T1>::is_fixed) ? x.get_n_elem() : out.n_elem;
     
-    typename Proxy<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(-=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename Proxy<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(-=);
+        }
+      else
+        {
+        typename Proxy<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(-=);
+        }
+      }
+    else
+      {
+      typename Proxy<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(-=);
+      }
     }
   else
     {
@@ -251,12 +328,31 @@ eop_core<eop_type>::apply_inplace_schur(Mat<typename T1::elem_type>& out, const 
   
   if(Proxy<T1>::prefer_at_accessor == false)
     {
-    // for fixed-sized vectors with n_elem >= 6, using x.get_n_elem() directly can cause a mis-optimisation (slowdown) of the loop under GCC 4.4
-    const uword n_elem = (Proxy<T1>::is_fixed) ? ( (x.get_n_elem() <= 4) ? x.get_n_elem() : out.n_elem ) : out.n_elem;
+    const uword n_elem = (Proxy<T1>::is_fixed) ? x.get_n_elem() : out.n_elem;
     
-    typename Proxy<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(*=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename Proxy<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(*=);
+        }
+      else
+        {
+        typename Proxy<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(*=);
+        }
+      }
+    else
+      {
+      typename Proxy<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(*=);
+      }
     }
   else
     {
@@ -289,12 +385,31 @@ eop_core<eop_type>::apply_inplace_div(Mat<typename T1::elem_type>& out, const eO
   
   if(Proxy<T1>::prefer_at_accessor == false)
     {
-    // for fixed-sized vectors with n_elem >= 6, using x.get_n_elem() directly can cause a mis-optimisation (slowdown) of the loop under GCC 4.4
-    const uword n_elem = (Proxy<T1>::is_fixed) ? ( (x.get_n_elem() <= 4) ? x.get_n_elem() : out.n_elem ) : out.n_elem;
+    const uword n_elem = (Proxy<T1>::is_fixed) ? x.get_n_elem() : out.n_elem;
     
-    typename Proxy<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(/=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename Proxy<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(/=);
+        }
+      else
+        {
+        typename Proxy<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(/=);
+        }
+      }
+    else
+      {
+      typename Proxy<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(/=);
+      }
     }
   else
     {
@@ -332,9 +447,29 @@ eop_core<eop_type>::apply(Cube<typename T1::elem_type>& out, const eOpCube<T1, e
     {
     const uword n_elem = out.n_elem;
     
-    typename ProxyCube<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename ProxyCube<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(=);
+        }
+      else
+        {
+        typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(=);
+        }
+      }
+    else
+      {
+      typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(=);
+      }
     }
   else
     {
@@ -374,9 +509,29 @@ eop_core<eop_type>::apply_inplace_plus(Cube<typename T1::elem_type>& out, const 
     {
     const uword n_elem = out.n_elem;
     
-    typename ProxyCube<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(+=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename ProxyCube<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(+=);
+        }
+      else
+        {
+        typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(+=);
+        }
+      }
+    else
+      {
+      typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(+=);
+      }
     }
   else
     {
@@ -412,9 +567,29 @@ eop_core<eop_type>::apply_inplace_minus(Cube<typename T1::elem_type>& out, const
     {
     const uword n_elem = out.n_elem;
     
-    typename ProxyCube<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(-=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename ProxyCube<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(-=);
+        }
+      else
+        {
+        typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(-=);
+        }
+      }
+    else
+      {
+      typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(-=);
+      }
     }
   else
     {
@@ -450,9 +625,29 @@ eop_core<eop_type>::apply_inplace_schur(Cube<typename T1::elem_type>& out, const
     {
     const uword n_elem = out.n_elem;
     
-    typename ProxyCube<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(*=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename ProxyCube<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(*=);
+        }
+      else
+        {
+        typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(*=);
+        }
+      }
+    else
+      {
+      typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(*=);
+      }
     }
   else
     {
@@ -488,9 +683,29 @@ eop_core<eop_type>::apply_inplace_div(Cube<typename T1::elem_type>& out, const e
     {
     const uword n_elem = out.n_elem;
     
-    typename ProxyCube<T1>::ea_type P = x.P.get_ea();
-    
-    arma_applier_1(/=);
+    if(memory::is_aligned(out_mem))
+      {
+      memory::mark_as_aligned(out_mem);
+      
+      if(x.P.is_aligned())
+        {
+        typename ProxyCube<T1>::aligned_ea_type P = x.P.get_aligned_ea();
+        
+        arma_applier_1a(/=);
+        }
+      else
+        {
+        typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+        
+        arma_applier_1u(/=);
+        }
+      }
+    else
+      {
+      typename ProxyCube<T1>::ea_type P = x.P.get_ea();
+      
+      arma_applier_1u(/=);
+      }
     }
   else
     {
@@ -626,9 +841,15 @@ eop_core<eop_floor            >::process(const eT val, const eT  ) { return eop_
 template<> template<typename eT> arma_hot arma_pure arma_inline eT
 eop_core<eop_ceil             >::process(const eT val, const eT  ) { return eop_aux::ceil(val);       }
 
+template<> template<typename eT> arma_hot arma_pure arma_inline eT
+eop_core<eop_round            >::process(const eT val, const eT  ) { return eop_aux::round(val);      }
+
+template<> template<typename eT> arma_hot arma_pure arma_inline eT
+eop_core<eop_sign             >::process(const eT val, const eT  ) { return eop_aux::sign(val);       }
 
 
-#undef arma_applier_1
+#undef arma_applier_1u
+#undef arma_applier_1a
 #undef arma_applier_2
 #undef arma_applier_3
 

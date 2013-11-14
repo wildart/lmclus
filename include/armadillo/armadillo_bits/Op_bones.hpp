@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup Op
@@ -35,7 +30,7 @@ class Op : public Base<typename T1::elem_type, Op<T1, op_type> >
   typedef typename get_pod_type<elem_type>::result pod_type;
   
   static const bool is_row = ( T1::is_col && (is_same_type<op_type, op_strans>::value || is_same_type<op_type, op_htrans>::value || is_same_type<op_type, op_htrans2>::value) );
-  static const bool is_col = ( T1::is_row && (is_same_type<op_type, op_strans>::value || is_same_type<op_type, op_htrans>::value || is_same_type<op_type, op_htrans2>::value) ) || (is_same_type<op_type, op_diagvec>::value);
+  static const bool is_col = ( T1::is_row && (is_same_type<op_type, op_strans>::value || is_same_type<op_type, op_htrans>::value || is_same_type<op_type, op_htrans2>::value) ) || (is_same_type<op_type, op_diagvec>::value) || (is_same_type<op_type, op_vectorise_col>::value);
   
   inline explicit Op(const T1& in_m);
   inline          Op(const T1& in_m, const elem_type in_aux);

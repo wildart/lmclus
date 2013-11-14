@@ -1,14 +1,9 @@
-// Copyright (C) 2010-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2010-2012 Conrad Sanderson
+// Copyright (C) 2010-2013 Conrad Sanderson
+// Copyright (C) 2010-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup eOp
@@ -124,6 +119,16 @@ eOp<T1, eop_type>::at(const uword row, const uword col) const
     {
     return eop_core<eop_type>::process(P.at(row, col), aux);
     }
+  }
+
+
+
+template<typename T1, typename eop_type>
+arma_inline
+typename T1::elem_type
+eOp<T1, eop_type>::at_alt(const uword ii) const
+  {
+  return eop_core<eop_type>::process(P.at_alt(ii), aux);
   }
 
 

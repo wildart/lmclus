@@ -1,15 +1,10 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2012 Ryan Curtin
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup fn_trace
@@ -97,7 +92,7 @@ trace_mul_unwrap(const T1& XA, const T2& XB)
   
   const Mat<eT>& B = tmpB.M;
   
-  arma_debug_assert_mul_size(PA.get_n_rows(), PA.get_n_cols(), B.n_rows, B.n_cols, "matrix multiply");
+  arma_debug_assert_mul_size(PA.get_n_rows(), PA.get_n_cols(), B.n_rows, B.n_cols, "matrix multiplication");
   
   arma_debug_check( (PA.get_n_rows() != B.n_cols), "trace(): matrix must be square sized" );
   
@@ -155,7 +150,7 @@ trace_mul_proxy(const T1& XA, const T2& XB)
     return trace_mul_unwrap(PA.Q, PB.Q);
     }
   
-  arma_debug_assert_mul_size(PA.get_n_rows(), PA.get_n_cols(), PB.get_n_rows(), PB.get_n_cols(), "matrix multiply");
+  arma_debug_assert_mul_size(PA.get_n_rows(), PA.get_n_cols(), PB.get_n_rows(), PB.get_n_cols(), "matrix multiplication");
   
   arma_debug_check( (PA.get_n_rows() != PB.get_n_cols()), "trace(): matrix must be square sized" );
   

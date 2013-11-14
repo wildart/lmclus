@@ -1,14 +1,9 @@
-// Copyright (C) 2009-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2009-2012 Conrad Sanderson
+// Copyright (C) 2009-2013 Conrad Sanderson
+// Copyright (C) 2009-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup glue_mixed
@@ -33,7 +28,7 @@ glue_mixed_times::apply(Mat<typename eT_promoter<T1,T2>::eT>& out, const mtGlue<
   const Mat<eT1>& A = tmp1.M;
   const Mat<eT2>& B = tmp2.M;
   
-  arma_debug_assert_mul_size(A, B, "multiplication");
+  arma_debug_assert_mul_size(A, B, "matrix multiplication");
   
   out.set_size(A.n_rows, B.n_cols);
   
@@ -77,9 +72,21 @@ glue_mixed_plus::apply(Mat<typename eT_promoter<T1,T2>::eT>& out, const mtGlue<t
     typename Proxy<T1>::ea_type AA = A.get_ea();
     typename Proxy<T2>::ea_type BB = B.get_ea();
     
-    for(uword i=0; i<n_elem; ++i)
+    if(memory::is_aligned(out_mem))
       {
-      out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) + upgrade_val<eT1,eT2>::apply(BB[i]);
+      memory::mark_as_aligned(out_mem);
+      
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) + upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
+      }
+    else
+      {
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) + upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
       }
     }
   else
@@ -132,9 +139,21 @@ glue_mixed_minus::apply(Mat<typename eT_promoter<T1,T2>::eT>& out, const mtGlue<
     typename Proxy<T1>::ea_type AA = A.get_ea();
     typename Proxy<T2>::ea_type BB = B.get_ea();
     
-    for(uword i=0; i<n_elem; ++i)
+    if(memory::is_aligned(out_mem))
       {
-      out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) - upgrade_val<eT1,eT2>::apply(BB[i]);
+      memory::mark_as_aligned(out_mem);
+      
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) - upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
+      }
+    else
+      {
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) - upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
       }
     }
   else
@@ -187,9 +206,21 @@ glue_mixed_div::apply(Mat<typename eT_promoter<T1,T2>::eT>& out, const mtGlue<ty
     typename Proxy<T1>::ea_type AA = A.get_ea();
     typename Proxy<T2>::ea_type BB = B.get_ea();
     
-    for(uword i=0; i<n_elem; ++i)
+    if(memory::is_aligned(out_mem))
       {
-      out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) / upgrade_val<eT1,eT2>::apply(BB[i]);
+      memory::mark_as_aligned(out_mem);
+      
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) / upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
+      }
+    else
+      {
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) / upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
       }
     }
   else
@@ -242,9 +273,21 @@ glue_mixed_schur::apply(Mat<typename eT_promoter<T1,T2>::eT>& out, const mtGlue<
     typename Proxy<T1>::ea_type AA = A.get_ea();
     typename Proxy<T2>::ea_type BB = B.get_ea();
     
-    for(uword i=0; i<n_elem; ++i)
+    if(memory::is_aligned(out_mem))
       {
-      out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) * upgrade_val<eT1,eT2>::apply(BB[i]);
+      memory::mark_as_aligned(out_mem);
+      
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) * upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
+      }
+    else
+      {
+      for(uword i=0; i<n_elem; ++i)
+        {
+        out_mem[i] = upgrade_val<eT1,eT2>::apply(AA[i]) * upgrade_val<eT1,eT2>::apply(BB[i]);
+        }
       }
     }
   else

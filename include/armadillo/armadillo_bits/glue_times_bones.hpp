@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup glue_times
@@ -101,22 +96,19 @@ class glue_times
   template<typename T1, typename T2>
   arma_hot inline static void apply_inplace_plus(Mat<typename T1::elem_type>& out, const Glue<T1, T2, glue_times>& X, const sword sign);
   
-  template<typename eT1, typename eT2>
-  inline static void apply_mixed(Mat<typename promote_type<eT1,eT2>::result>& out, const Mat<eT1>& X, const Mat<eT2>& Y);
+  //
   
+  template<typename eT, const bool do_trans_A, const bool do_trans_B, typename TA, typename TB>
+  arma_inline static uword mul_storage_cost(const TA& A, const TB& B);
   
-  template<typename eT, const bool do_trans_A, const bool do_trans_B>
-  arma_inline static uword  mul_storage_cost(const Mat<eT>& A, const Mat<eT>& B);
+  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_scalar_times, typename TA, typename TB>
+  arma_hot inline static void apply(Mat<eT>& out, const TA& A, const TB& B, const eT val);
   
-  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_scalar_times>
-  arma_hot inline static void apply(Mat<eT>& out, const Mat<eT>& A, const Mat<eT>& B, const eT val);
+  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_trans_C, const bool do_scalar_times, typename TA, typename TB, typename TC>
+  arma_hot inline static void apply(Mat<eT>& out, const TA& A, const TB& B, const TC& C, const eT val);
   
-  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_trans_C, const bool do_scalar_times>
-  arma_hot inline static void apply(Mat<eT>& out, const Mat<eT>& A, const Mat<eT>& B, const Mat<eT>& C, const eT val);
-  
-  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_trans_C, const bool do_trans_D, const bool do_scalar_times>
-  arma_hot inline static void apply(Mat<eT>& out, const Mat<eT>& A, const Mat<eT>& B, const Mat<eT>& C, const Mat<eT>& D, const eT val);
-  
+  template<typename eT, const bool do_trans_A, const bool do_trans_B, const bool do_trans_C, const bool do_trans_D, const bool do_scalar_times, typename TA, typename TB, typename TC, typename TD>
+  arma_hot inline static void apply(Mat<eT>& out, const TA& A, const TB& B, const TC& C, const TD& D, const eT val);
   };
 
 

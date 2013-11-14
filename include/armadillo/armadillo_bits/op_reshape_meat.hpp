@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 
@@ -48,19 +43,8 @@ op_reshape::apply(Mat<typename T1::elem_type>& out, const Op<T1,op_reshape>& in)
         }
       else  // &out == &A, i.e. inplace resize
         {
-        const bool same_size = ( (out.n_rows == in_n_rows) && (out.n_cols == in_n_cols) );
-        
-        if(same_size == false)
-          {
-          arma_debug_check
-            (
-            (out.mem_state == 3),
-            "reshape(): size can't be changed as template based size specification is in use"
-            );
-          
-          access::rw(out.n_rows) = in_n_rows;
-          access::rw(out.n_cols) = in_n_cols;
-          }
+        out.set_size(in_n_rows, in_n_cols);
+        // set_size() doesn't destroy data as long as the number of elements in the matrix remains the same
         }
       }
     else
@@ -71,16 +55,26 @@ op_reshape::apply(Mat<typename T1::elem_type>& out, const Op<T1,op_reshape>& in)
       out.set_size(in_n_rows, in_n_cols);
       
       eT* out_mem = out.memptr();
-      uword i = 0;
       
       const uword B_n_rows = B.n_rows;
       const uword B_n_cols = B.n_cols;
       
       for(uword row=0; row<B_n_rows; ++row)
-      for(uword col=0; col<B_n_cols; ++col)
         {
-        out_mem[i] = B.at(row,col);
-        ++i;
+        uword i,j;
+        for(i=0, j=1; j < B_n_cols; i+=2, j+=2)
+          {
+          const eT tmp_i = B.at(row,i);
+          const eT tmp_j = B.at(row,j);
+          
+          *out_mem = tmp_i;  out_mem++;
+          *out_mem = tmp_j;  out_mem++;
+          }
+        
+        if(i < B_n_cols)
+          {
+          *out_mem = B.at(row,i);  out_mem++;
+          }
         }
       }
     }
@@ -160,25 +154,8 @@ op_reshape::apply(Cube<typename T1::elem_type>& out, const OpCube<T1,op_reshape>
         }
       else  // &out == &A, i.e. inplace resize
         {
-        const bool same_size = ( (out.n_rows == in_n_rows) && (out.n_cols == in_n_cols) && (out.n_slices == in_n_slices) );
-        
-        if(same_size == false)
-          {
-          arma_debug_check
-            (
-            (out.mem_state == 3),
-            "reshape(): size can't be changed as template based size specification is in use"
-            );
-          
-          out.delete_mat();
-          
-          access::rw(out.n_rows)       = in_n_rows;
-          access::rw(out.n_cols)       = in_n_cols;
-          access::rw(out.n_elem_slice) = in_n_rows * in_n_cols;
-          access::rw(out.n_slices)     = in_n_slices;
-          
-          out.create_mat();
-          }
+        out.set_size(in_n_rows, in_n_cols, in_n_slices);
+        // set_size() doesn't destroy data as long as the number of elements in the cube remains the same
         }
       }
     else
@@ -189,18 +166,17 @@ op_reshape::apply(Cube<typename T1::elem_type>& out, const OpCube<T1,op_reshape>
       out.set_size(in_n_rows, in_n_cols, in_n_slices);
       
       eT* out_mem = out.memptr();
-      uword i = 0;
       
       const uword B_n_rows   = B.n_rows;
       const uword B_n_cols   = B.n_cols;
       const uword B_n_slices = B.n_slices;
       
-      for(uword slice=0; slice<B_n_slices; ++slice)
-      for(uword row=0; row<B_n_rows; ++row)
-      for(uword col=0; col<B_n_cols; ++col)
+      for(uword slice = 0; slice < B_n_slices; ++slice)
+      for(uword row   = 0; row   < B_n_rows;   ++row  )
+      for(uword col   = 0; col   < B_n_cols;   ++col  )
         {
-        out_mem[i] = B.at(row,col,slice);
-        ++i;
+        *out_mem = B.at(row,col,slice);
+        out_mem++;
         }
       }
     }

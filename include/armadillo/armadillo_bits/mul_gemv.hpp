@@ -1,14 +1,9 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup gemv
@@ -54,12 +49,12 @@ class gemv_emul_tinysq
   
   
 
-  template<typename eT>
+  template<typename eT, typename TA>
   arma_hot
   inline
   static
   void
-  apply( eT* y, const Mat<eT>& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
+  apply( eT* y, const TA& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
     {
     arma_extra_debug_sigprint();
     
@@ -136,6 +131,74 @@ class gemv_emul_tinysq
 
 
 
+class gemv_emul_large_helper
+  {
+  public:
+  
+  template<typename eT, typename TA>
+  arma_hot
+  inline
+  static
+  typename arma_not_cx<eT>::result
+  dot_row_col( const TA& A, const eT* x, const uword row, const uword N )
+    {
+    eT acc1 = eT(0);
+    eT acc2 = eT(0);
+    
+    uword i,j;
+    for(i=0, j=1; j < N; i+=2, j+=2)
+      {
+      const eT xi = x[i];
+      const eT xj = x[j];
+      
+      acc1 += A.at(row,i) * xi;
+      acc2 += A.at(row,j) * xj;
+      }
+    
+    if(i < N)
+      {
+      acc1 += A.at(row,i) * x[i];
+      }
+    
+    return (acc1 + acc2);
+    }
+  
+  
+  
+  template<typename eT, typename TA>
+  arma_hot
+  inline
+  static
+  typename arma_cx_only<eT>::result
+  dot_row_col( const TA& A, const eT* x, const uword row, const uword N )
+    {
+    typedef typename get_pod_type<eT>::result T;
+    
+    T val_real = T(0);
+    T val_imag = T(0);
+    
+    for(uword i=0; i<N; ++i)
+      {
+      const std::complex<T>& Ai = A.at(row,i);
+      const std::complex<T>& xi = x[i];
+      
+      const T a = Ai.real();
+      const T b = Ai.imag();
+      
+      const T c = xi.real();
+      const T d = xi.imag();
+      
+      val_real += (a*c) - (b*d);
+      val_imag += (a*d) + (b*c);
+      }
+    
+    return std::complex<T>(val_real, val_imag);
+    }
+  
+  };
+
+
+
 //! \brief
 //! Partial emulation of ATLAS/BLAS gemv().
 //! 'y' is assumed to have been set to the correct size (i.e. taking into account the transpose)
@@ -145,12 +208,12 @@ class gemv_emul_large
   {
   public:
   
-  template<typename eT>
+  template<typename eT, typename TA>
   arma_hot
   inline
   static
   void
-  apply( eT* y, const Mat<eT>& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
+  apply( eT* y, const TA& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
     {
     arma_extra_debug_sigprint();
     
@@ -161,57 +224,22 @@ class gemv_emul_large
       {
       if(A_n_rows == 1)
         {
-        const eT acc = op_dot::direct_dot_arma(A_n_cols, A.mem, x);
+        const eT acc = op_dot::direct_dot_arma(A_n_cols, A.memptr(), x);
         
-        if( (use_alpha == false) && (use_beta == false) )
-          {
-          y[0] = acc;
-          }
-        else
-        if( (use_alpha == true) && (use_beta == false) )
-          {
-          y[0] = alpha * acc;
-          }
-        else
-        if( (use_alpha == false) && (use_beta == true) )
-          {
-          y[0] = acc + beta*y[0];
-          }
-        else
-        if( (use_alpha == true) && (use_beta == true) )
-          {
-          y[0] = alpha*acc + beta*y[0];
-          }
+             if( (use_alpha == false) && (use_beta == false) )  { y[0] =       acc;             }
+        else if( (use_alpha == true ) && (use_beta == false) )  { y[0] = alpha*acc;             }
+        else if( (use_alpha == false) && (use_beta == true ) )  { y[0] =       acc + beta*y[0]; }
+        else if( (use_alpha == true ) && (use_beta == true ) )  { y[0] = alpha*acc + beta*y[0]; }
         }
       else
       for(uword row=0; row < A_n_rows; ++row)
         {
-        eT acc = eT(0);
+        const eT acc = gemv_emul_large_helper::dot_row_col(A, x, row, A_n_cols);
         
-        for(uword i=0; i < A_n_cols; ++i)
-          {
-          acc += A.at(row,i) * x[i];
-          }
-        
-        if( (use_alpha == false) && (use_beta == false) )
-          {
-          y[row] = acc;
-          }
-        else
-        if( (use_alpha == true) && (use_beta == false) )
-          {
-          y[row] = alpha * acc;
-          }
-        else
-        if( (use_alpha == false) && (use_beta == true) )
-          {
-          y[row] = acc + beta*y[row];
-          }
-        else
-        if( (use_alpha == true) && (use_beta == true) )
-          {
-          y[row] = alpha*acc + beta*y[row];
-          }
+             if( (use_alpha == false) && (use_beta == false) )  { y[row] =       acc;               }
+        else if( (use_alpha == true ) && (use_beta == false) )  { y[row] = alpha*acc;               }
+        else if( (use_alpha == false) && (use_beta == true ) )  { y[row] =       acc + beta*y[row]; }
+        else if( (use_alpha == true ) && (use_beta == true ) )  { y[row] = alpha*acc + beta*y[row]; }
         }
       }
     else
@@ -232,25 +260,10 @@ class gemv_emul_large
         
         const eT acc = op_dot::direct_dot_arma(A_n_rows, A.colptr(col), x);
         
-        if( (use_alpha == false) && (use_beta == false) )
-          {
-          y[col] = acc;
-          }
-        else
-        if( (use_alpha == true) && (use_beta == false) )
-          {
-          y[col] = alpha * acc;
-          }
-        else
-        if( (use_alpha == false) && (use_beta == true) )
-          {
-          y[col] = acc + beta*y[col];
-          }
-        else
-        if( (use_alpha == true) && (use_beta == true) )
-          {
-          y[col] = alpha*acc + beta*y[col];
-          }
+             if( (use_alpha == false) && (use_beta == false) )  { y[col] =       acc;               }
+        else if( (use_alpha == true ) && (use_beta == false) )  { y[col] = alpha*acc;               }
+        else if( (use_alpha == false) && (use_beta == true ) )  { y[col] =       acc + beta*y[col]; }
+        else if( (use_alpha == true ) && (use_beta == true ) )  { y[col] = alpha*acc + beta*y[col]; }
         
         }
       }
@@ -265,12 +278,12 @@ class gemv_emul
   {
   public:
   
-  template<typename eT>
+  template<typename eT, typename TA>
   arma_hot
   inline
   static
   void
-  apply( eT* y, const Mat<eT>& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0), const typename arma_not_cx<eT>::result* junk = 0 )
+  apply( eT* y, const TA& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0), const typename arma_not_cx<eT>::result* junk = 0 )
     {
     arma_extra_debug_sigprint();
     arma_ignore(junk);
@@ -334,15 +347,16 @@ class gemv
   {
   public:
   
-  template<typename eT>
+  template<typename eT, typename TA>
   inline
   static
   void
-  apply_blas_type( eT* y, const Mat<eT>& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
+  apply_blas_type( eT* y, const TA& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
     {
     arma_extra_debug_sigprint();
     
-    const uword threshold = (is_complex<eT>::value == true) ? 16u : 64u;
+    //const uword threshold = (is_cx<eT>::yes) ? 16u : 64u;
+    const uword threshold = (is_cx<eT>::yes) ? 64u : 100u;
     
     if(A.n_elem <= threshold)
       {
@@ -352,29 +366,56 @@ class gemv
       {
       #if defined(ARMA_USE_ATLAS)
         {
-        arma_extra_debug_print("atlas::cblas_gemv()");
-        
-        atlas::cblas_gemv<eT>
-          (
-          atlas::CblasColMajor,
-          (do_trans_A) ? ( is_complex<eT>::value ? CblasConjTrans : atlas::CblasTrans ) : atlas::CblasNoTrans,
-          A.n_rows,
-          A.n_cols,
-          (use_alpha) ? alpha : eT(1),
-          A.mem,
-          A.n_rows,
-          x,
-          1,
-          (use_beta) ? beta : eT(0),
-          y,
-          1
-          );
+        if(is_cx<eT>::no)
+          {
+          // use gemm() instead of gemv() to work around a speed issue in Atlas 3.8.4
+          
+          arma_extra_debug_print("atlas::cblas_gemm()");
+          
+          atlas::cblas_gemm<eT>
+            (
+            atlas::CblasColMajor,
+            (do_trans_A) ? ( is_cx<eT>::yes ? CblasConjTrans : atlas::CblasTrans ) : atlas::CblasNoTrans,
+            atlas::CblasNoTrans,
+            (do_trans_A) ? A.n_cols : A.n_rows,
+            1,
+            (do_trans_A) ? A.n_rows : A.n_cols,
+            (use_alpha) ? alpha : eT(1),
+            A.mem,
+            A.n_rows,
+            x,
+            (do_trans_A) ? A.n_rows : A.n_cols,
+            (use_beta) ? beta : eT(0),
+            y,
+            (do_trans_A) ? A.n_cols : A.n_rows
+            );
+          }
+        else
+          {
+          arma_extra_debug_print("atlas::cblas_gemv()");
+          
+          atlas::cblas_gemv<eT>
+            (
+            atlas::CblasColMajor,
+            (do_trans_A) ? ( is_cx<eT>::yes ? CblasConjTrans : atlas::CblasTrans ) : atlas::CblasNoTrans,
+            A.n_rows,
+            A.n_cols,
+            (use_alpha) ? alpha : eT(1),
+            A.mem,
+            A.n_rows,
+            x,
+            1,
+            (use_beta) ? beta : eT(0),
+            y,
+            1
+            );
+          }
         }
       #elif defined(ARMA_USE_BLAS)
         {
         arma_extra_debug_print("blas::gemv()");
         
-        const char      trans_A     = (do_trans_A) ? ( is_complex<eT>::value ? 'C' : 'T' ) : 'N';
+        const char      trans_A     = (do_trans_A) ? ( is_cx<eT>::yes ? 'C' : 'T' ) : 'N';
         const blas_int  m           = A.n_rows;
         const blas_int  n           = A.n_cols;
         const eT        local_alpha = (use_alpha) ? alpha : eT(1);
@@ -410,27 +451,64 @@ class gemv
   
   
   
-  template<typename eT>
+  template<typename eT, typename TA>
   arma_inline
   static
   void
-  apply( eT* y, const Mat<eT>& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
+  apply( eT* y, const TA& A, const eT* x, const eT alpha = eT(1), const eT beta = eT(0) )
     {
     gemv_emul<do_trans_A, use_alpha, use_beta>::apply(y,A,x,alpha,beta);
     }
   
   
   
+  template<typename TA>
   arma_inline
   static
   void
   apply
     (
-          float*      y,
-    const Mat<float>& A,
-    const float*      x,
-    const float       alpha = float(1),
-    const float       beta  = float(0)
+          float* y,
+    const TA&    A,
+    const float* x,
+    const float  alpha = float(1),
+    const float  beta  = float(0)
+    )
+    {
+    gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);
+    }
+  
+  
+  
+  template<typename TA>
+  arma_inline
+  static
+  void
+  apply
+    (
+          double* y,
+    const TA&     A,
+    const double* x,
+    const double  alpha = double(1),
+    const double  beta  = double(0)
+    )
+    {
+    gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);
+    }
+  
+  
+  
+  template<typename TA>
+  arma_inline
+  static
+  void
+  apply
+    (
+          std::complex<float>* y,
+    const TA&                  A,
+    const std::complex<float>* x,
+    const std::complex<float>  alpha = std::complex<float>(1),
+    const std::complex<float>  beta  = std::complex<float>(0)
     )
     {
     gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);
@@ -438,50 +516,17 @@ class gemv
 
 
   
+  template<typename TA>
   arma_inline
   static
   void
   apply
     (
-          double*      y,
-    const Mat<double>& A,
-    const double*      x,
-    const double       alpha = double(1),
-    const double       beta  = double(0)
-    )
-    {
-    gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);
-    }
-
-
-  
-  arma_inline
-  static
-  void
-  apply
-    (
-          std::complex<float>*         y,
-    const Mat< std::complex<float > >& A,
-    const std::complex<float>*         x,
-    const std::complex<float>          alpha = std::complex<float>(1),
-    const std::complex<float>          beta  = std::complex<float>(0)
-    )
-    {
-    gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);
-    }
-
-
-  
-  arma_inline
-  static
-  void
-  apply
-    (
-          std::complex<double>*        y,
-    const Mat< std::complex<double> >& A,
-    const std::complex<double>*        x,
-    const std::complex<double>         alpha = std::complex<double>(1),
-    const std::complex<double>         beta  = std::complex<double>(0)
+          std::complex<double>* y,
+    const TA&                   A,
+    const std::complex<double>* x,
+    const std::complex<double>  alpha = std::complex<double>(1),
+    const std::complex<double>  beta  = std::complex<double>(0)
     )
     {
     gemv<do_trans_A, use_alpha, use_beta>::apply_blas_type(y,A,x,alpha,beta);

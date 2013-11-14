@@ -1,35 +1,31 @@
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
-// Copyright (C) 2008-2012 Conrad Sanderson
+// Copyright (C) 2008-2013 Conrad Sanderson
+// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 
 #if !defined(ARMA_USE_LAPACK)
 #cmakedefine ARMA_USE_LAPACK
 //// Uncomment the above line if you have LAPACK or a high-speed replacement for LAPACK,
-//// such as Intel's MKL, AMD's ACML, or the Accelerate framework.
+//// such as Intel MKL, AMD ACML, or the Accelerate framework.
 //// LAPACK is required for matrix decompositions (eg. SVD) and matrix inverse.
 #endif
 
 #if !defined(ARMA_USE_BLAS)
 #cmakedefine ARMA_USE_BLAS
 //// Uncomment the above line if you have BLAS or a high-speed replacement for BLAS,
-//// such as GotoBLAS, Intel's MKL, AMD's ACML, or the Accelerate framework.
+//// such as OpenBLAS, GotoBLAS, Intel MKL, AMD ACML, or the Accelerate framework.
 //// BLAS is used for matrix multiplication.
 //// Without BLAS, matrix multiplication will still work, but might be slower.
 #endif
 
 #cmakedefine ARMA_USE_WRAPPER
-//// Comment out the above line if you prefer to directly link with LAPACK and/or BLAS (eg. -llapack -lblas)
-//// instead of linking indirectly with LAPACK and/or BLAS via Armadillo's run-time wrapper library.
+//// Comment out the above line if you're getting linking errors when compiling your programs,
+//// or if you prefer to directly link with LAPACK and/or BLAS.
+//// You will then need to link your programs directly with -llapack -lblas instead of -larmadillo
 
 // #define ARMA_BLAS_CAPITALS
 //// Uncomment the above line if your BLAS and LAPACK libraries have capitalised function names (eg. ACML on 64-bit Windows)
@@ -45,10 +41,10 @@
 //// Uncomment the above line if your BLAS and LAPACK libraries use "long long" instead of "int"
 
 // #define ARMA_USE_TBB_ALLOC
-//// Uncomment the above line if you want to use Intel TBB scalable_malloc() and scalable_free() instead of standard new[] and delete[]
+//// Uncomment the above line if you want to use Intel TBB scalable_malloc() and scalable_free() instead of standard malloc() and free()
 
 // #define ARMA_USE_MKL_ALLOC
-//// Uncomment the above line if you want to use Intel MKL mkl_malloc() and mkl_free() instead of standard new[] and delete[]
+//// Uncomment the above line if you want to use Intel MKL mkl_malloc() and mkl_free() instead of standard malloc() and free()
 
 #cmakedefine ARMA_USE_ATLAS
 #define ARMA_ATLAS_INCLUDE_DIR ${ARMA_ATLAS_INCLUDE_DIR}/
@@ -138,9 +134,26 @@
   #undef ARMA_USE_BLAS
 #endif
 
+#if defined(ARMA_DONT_USE_WRAPPER)
+  #undef ARMA_USE_WRAPPER
+#endif
+
 #if defined(ARMA_DONT_USE_ATLAS)
   #undef ARMA_USE_ATLAS
   #undef ARMA_ATLAS_INCLUDE_DIR
+#endif
+
+#if defined(ARMA_DONT_USE_CXX11)
+  #undef ARMA_USE_CXX11
+#endif
+
+#if defined(ARMA_DONT_USE_HDF5)
+  #undef ARMA_USE_HDF5
+#endif
+
+#if defined(ARMA_DONT_USE_BOOST)
+  #undef ARMA_USE_BOOST
+  #undef ARMA_USE_BOOST_DATE
 #endif
 
 #if defined(ARMA_DONT_PRINT_LOGIC_ERRORS)

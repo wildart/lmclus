@@ -1,14 +1,9 @@
-// Copyright (C) 2009-2012 NICTA (www.nicta.com.au)
 // Copyright (C) 2009-2012 Conrad Sanderson
+// Copyright (C) 2009-2012 NICTA (www.nicta.com.au)
 // 
-// This file is part of the Armadillo C++ library.
-// It is provided without any warranty of fitness
-// for any purpose. You can redistribute this file
-// and/or modify it under the terms of the GNU
-// Lesser General Public License (LGPL) as published
-// by the Free Software Foundation, either version 3
-// of the License or (at your option) any later version.
-// (see http://www.opensource.org/licenses for more info)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 //! \addtogroup op_mean
@@ -27,8 +22,7 @@ op_mean::apply(Mat<typename T1::elem_type>& out, const Op<T1,op_mean>& in)
   {
   arma_extra_debug_sigprint();
   
-  typedef typename T1::elem_type            eT;
-  typedef typename get_pod_type<eT>::result  T;
+  typedef typename T1::elem_type eT;
   
   const unwrap_check<T1> tmp(in.m, out);
   const Mat<eT>& X = tmp.M;
