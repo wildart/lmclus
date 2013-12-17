@@ -42,13 +42,15 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     params.NUM_OF_CLUS = INTEGER(numOfClus)[0];
     params.NOISE_SIZE = static_cast<unsigned int>(INTEGER(noiseSize)[0]);
     params.BEST_BOUND = REAL(bestBound)[0];
-    params.BEST_BOUND = REAL(errorBound)[0];
+    params.ERROR_BOUND = REAL(errorBound)[0];
     params.MAX_BIN_PORTION = REAL(maxBinPortion)[0];
     params.HIS_SAMPLING = static_cast<bool>(INTEGER(hisSampling)[0]);
     params.CONST_SIZE_HIS = INTEGER(hisConstSize)[0];
     params.SAMPLING_HEURISTIC = INTEGER(sampleHeuristic)[0];
     params.SAMPLING_FACTOR = REAL(sampleFactor)[0];
     params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);
+    
+    LOG_INFO(log) << params;
     
     show_log = INTEGER(showLog)[0];
     
@@ -69,15 +71,16 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     std::vector<double> thresholds; 
     std::vector<arma::mat> bases; 
     std::vector<int> clusterDims;
+    std::vector<arma::vec> origins;
     
     clustering::lmclus::LMCLUS lmclus(&log); 
-    lmclus.cluster(data, params, labels, thresholds, bases, clusterDims, output_callback);
+    lmclus.cluster(data, params, labels, thresholds, bases, clusterDims, origins, output_callback);
     if (show_log)
         Rprintf("%s", log.getString().c_str());
     
     Rprintf("Clusters found: %d\n", labels.size());
     
-    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases;
+    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases, Rorigins;
     
      // Thresholds
     PROTECT(Rthresholds = allocVector(REALSXP,thresholds.size())); nprotect++;
@@ -99,31 +102,38 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
         SET_VECTOR_ELT(Rlabels, i, lbls);
     }
     
-    // bases
+    // Bases
     PROTECT(Rbases = allocVector(VECSXP,bases.size())); nprotect++;
     for (i = 0; i < bases.size(); ++i){
         int r = bases[i].n_rows, c = bases[i].n_cols;
-        SEXP bss, dimnames;
-        PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;
-        //PROTECT(dimnames = allocVector(VECSXP, 2)); nprotect++;
-        //SET_VECTOR_ELT(dimnames, 0, r);
-        //SET_VECTOR_ELT(dimnames, 1, c);
-        //setAttrib(bss, R_DimNamesSymbol, dimnames);
+        SEXP bss;
+        PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;        
         for (j = 0; j < r; ++j)
             for (k = 0; k < c; ++k)
                 REAL(bss)[j+r*k] = bases[i].at(j, k);
         SET_VECTOR_ELT(Rbases, i, bss);
     }
     
+    // Origins
+    PROTECT(Rorigins = allocVector(VECSXP,origins.size())); nprotect++;
+    for (i = 0; i < origins.size(); ++i){
+        SEXP orgn;
+        PROTECT(orgn = allocVector(REALSXP, origins[i].n_elem)); nprotect++;
+        for (j = 0; j < origins[i].n_elem; ++j)
+            REAL(orgn)[j] = origins[i][j];
+        SET_VECTOR_ELT(Rorigins, i, orgn);
+    }
+    
     // Result list
-    PROTECT(Return_lst = allocVector(VECSXP,4)); nprotect++;
+    PROTECT(Return_lst = allocVector(VECSXP,5)); nprotect++;
     
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(4)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(5)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("thresholds"));
     SET_STRING_ELT(Rnames, 1, mkChar("cluster_dimensions"));
     SET_STRING_ELT(Rnames, 2, mkChar("clusters"));
     SET_STRING_ELT(Rnames, 3, mkChar("bases"));
+    SET_STRING_ELT(Rnames, 4, mkChar("origins"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
@@ -131,6 +141,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_VECTOR_ELT(Return_lst, 1, RclusterDims);
     SET_VECTOR_ELT(Return_lst, 2, Rlabels);
     SET_VECTOR_ELT(Return_lst, 3, Rbases);
+    SET_VECTOR_ELT(Return_lst, 4, Rorigins);
     
     UNPROTECT(nprotect);
     return Return_lst;
