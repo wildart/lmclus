@@ -190,10 +190,14 @@ public:
             delete log;
     }
     
+    void find_manifold(const arma::mat &data, const Parameters &para, 
+                 arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
+                 std::vector<Separation> &separations, bool &Noise, int &SepDim);
+    
     void cluster(const arma::mat &data, const Parameters &para, 
                  std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
                  std::vector<arma::mat> &bases, std::vector<int> &clusterDims,
-                 callback_t progress = nullptr);
+                 std::vector<arma::vec> &origins, callback_t progress = nullptr);
 };
 
 } // lmclus namespace
