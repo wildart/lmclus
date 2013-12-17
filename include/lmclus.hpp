@@ -154,9 +154,6 @@ private:
     arma::uvec samplePoints(const arma::mat &data, const int lmDim);
     arma::uvec sample(const int n, const int k);
 
-    // basis generation functions
-    arma::mat formBasis(const arma::mat &points, const arma::rowvec& origin);
-    arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
         
     // spearation detection functions
     Separation findBestSeparation(const arma::mat &data, const int SubSpaceDim, const Parameters &para);
@@ -189,6 +186,11 @@ public:
         if (logCreated)
             delete log;
     }
+    
+    // basis generation functions
+    arma::mat formBasis(const arma::mat &points, arma::rowvec& origin);
+    arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
+    static double distanceToManifold(const arma::rowvec &point, const arma::mat &B_T);
     
     void find_manifold(const arma::mat &data, const Parameters &para, 
                  arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
