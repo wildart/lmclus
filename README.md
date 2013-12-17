@@ -7,17 +7,18 @@ Current repository contains LMCLUS C++ library and R extensions.
 Installation
 ============
 
-LMCLUS is built via CMake (www.cmake.org). To build from the command line:
+To use lmclus you do not need to recompile the LMCLUS shared library. If you only want to create R extensions then 
+    
+    $ git clone https://github.com/wildart/lmclus.git
+    $ R CMD INSTALL --lmclus
+
+The LMCLUS shared object is built via CMake (www.cmake.org). To build from the command line:
 
     $ cd lmclus
     $ cmake .
     $ make
     $ make test
   
-If you want to create R extensions then 
-    
-    $ R CMD build lmclus
-    $ R CMD INSTALL --build lmclus_1.0.0.tar.gz
 
 Dependencies
 ------------
