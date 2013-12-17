@@ -130,7 +130,8 @@ int main ( int argc, char *argv[] )
     std::vector<double> thresholds; 
     std::vector<arma::mat> basises; 
     std::vector<int> clusterDims;
-    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims, progress);
+    std::vector<arma::vec> origins;
+    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims, origins, progress);
     
     // Process results
     size_t clusterNum = labels.size();
