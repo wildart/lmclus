@@ -113,3 +113,22 @@ print.lmclus <- function(x, ...) {
     cat("\nCluster dimensions:\n")
     print(x$cluster_dimensions)
 }
+
+kittlerPure <- function(Xnorm, minX, maxX) 
+{    
+    .Call("kittler", Xnorm, minX, maxX, package = "lmclus")
+}
+
+kittler <- function(X, ...) UseMethod("kittler")
+
+kittler.default <- function(Xnorm, minX, maxX, ...)
+{        
+    Xnorm <- as.matrix(Xnorm)
+
+    res <- lmclusPure(Xnorm, minX, maxX)
+    
+    res$call <- match.call()
+    
+    class(res) <- "kittler"
+    res
+}

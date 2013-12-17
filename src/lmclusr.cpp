@@ -15,6 +15,7 @@
  *
  * =====================================================================================
  */
+#include "Kittler.h"
 #include "lmclus.hpp"
 
 #include <R.h>
@@ -25,6 +26,45 @@ void output_callback(const char *msg){
 }
 
 extern "C" {
+    
+SEXP kittler(SEXP Xs, SEXP minX, SEXP maxX) 
+{
+    int n, nprotect = 0;
+    try{
+    SEXP Rdim = getAttrib(Xs, R_DimSymbol);
+    n = INTEGER(Rdim)[0];
+    m = INTEGER(Rdim)[1];
+    Xs = AS_NUMERIC(Xs);
+    arma::vec hist(REAL(Xs), n, false);
+    double RHmin = hist.min();
+    double RHmax = hist.max();
+    Kittler K;
+    K.FindThreshold(hist, RHmin, RHmax);    
+    
+    SEXP Return_lst, Rnames, Rthreshold, Rseparation;
+    PROTECT(Rthreshold = ScalarReal(K.GetThreshold())); nprotect++;
+    PROTECT(Rseparation = ScalarReal(K.GetDiscrim()*K.GetDepth())); nprotect++;    
+    PROTECT(Return_lst = allocVector(VECSXP,2)); nprotect++;
+    
+    /* set names */
+    PROTECT(Rnames = NEW_CHARACTER(2)); nprotect++;
+    SET_STRING_ELT(Rnames, 0, mkChar("threshold"));
+    SET_STRING_ELT(Rnames, 1, mkChar("separation"));    
+    SET_NAMES(Return_lst, Rnames);
+
+    /* set values */
+    SET_VECTOR_ELT(Return_lst, 0, Rthreshold);
+    SET_VECTOR_ELT(Return_lst, 1, Rseparation);
+
+    UNPROTECT(nprotect);
+    return Return_lst;
+    
+    } catch(...) {         
+        ::Rf_error( "c++ exception (unknown reason)" ); 
+    }
+    return R_NilValue;
+}
+    
 SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound, SEXP errorBound, 
 	    SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize, SEXP sampleHeuristic, 
 	    SEXP sampleFactor, SEXP randomSeed, SEXP showLog) 
