@@ -44,7 +44,7 @@ static const double SMALL_NUMBER = 1.0e-5;
 class Kittler
 {
 public:
-	Kittler():Depth(0), Discriminability(0), GlobalMin(0), Threshold(0) {};
+	Kittler():Depth(0), Discriminability(0), GlobalMin(0), Threshold(0), CriterionFunc(), MinIndex(-1) {};
 	bool FindThreshold(const arma::vec &H, double RHmin, double RHmax);
 	double GetDepth() {
 		return Depth;
@@ -55,6 +55,15 @@ public:
 	double GetThreshold() {
 		return Threshold;
 	}
+	vector<double> GetCriterionFunc() {
+		return CriterionFunc;
+	}
+	double GetMinIndex() {
+		return MinIndex;
+	}
+	double GetGlobalMin() {
+		return GlobalMin;
+	}
 private:
 	deque<bool> MarkMinima( const vector<double> &J);
 	bool FindGlobalMin(const deque<bool> &IsMin, const vector<double> &J);
@@ -64,7 +73,8 @@ private:
 	double Discriminability;
 	double GlobalMin;
 	double Threshold;
-
+	vector<double> CriterionFunc;
+	int MinIndex;
 };
 
 

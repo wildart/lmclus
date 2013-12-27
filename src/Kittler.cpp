@@ -49,10 +49,12 @@ bool Kittler::FindThreshold(const arma::vec &H, double RHmin, double RHmax)
 	vector<double> J(N-1,0);
 
 	for(int T=0; T<N-1 ; T++)
-		if (P1[T] && P2[T] && Var1[T]>SMALL_NUMBER && Var2[T]>SMALL_NUMBER)
+		//if (P1[T] && P2[T] && Var1[T]>SMALL_NUMBER && Var2[T]>SMALL_NUMBER)
 			J[T] = 1 + 2*( P1[T]*log(sqrt(Var1[T])) + P2[T]*log(sqrt(Var2[T]))) - 2*(P1[T]*log(P1[T]) + P2[T]*log(P2[T]));
-		else
-			J[T] = -100000000;               // undefined
+		//else
+		//	J[T] = -100000000;               // undefined
+	
+	CriterionFunc = J;
 
 	//cout << "compute criterion function" << endl;
 	
@@ -63,8 +65,8 @@ bool Kittler::FindThreshold(const arma::vec &H, double RHmin, double RHmax)
 	if (FindGlobalMin(IsMin,J)==false)
 		return false;							// no minimum, unimode histogram
 	else {									// compute separation statistics
-		int MinIndex = static_cast<int> ( GlobalMin );
-		Threshold =	RHmin + ( (RHmax - RHmin) / static_cast<double>(N) ) * (GlobalMin+1) ;
+		MinIndex = static_cast<int> ( GlobalMin );
+		Threshold = RHmin + ( (GlobalMin+1) * (RHmax - RHmin) / N );
 		Discriminability = (fabs(Mu1[MinIndex]-Mu2[MinIndex]))/(sqrt(Var1[MinIndex]+Var2[MinIndex]));
 		return true;
 	}

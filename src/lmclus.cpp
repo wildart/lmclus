@@ -185,30 +185,22 @@ arma::uvec clustering::lmclus::LMCLUS::sample(const int n, const int k)
  * the idea is to pick a point (origin) from the sampled points and generate
  * the basis vectors by subtracting all other points from the origin,
  * creating a basis matrix with one less vector than the number of sampled points.
- * due to GSLMatrix limitations (this was updated), which allows only a "set row" and not a
- * "set column" operation, the basis matrix generated in this function
- * is the transpose of the basis matrix. the function also returns the origin
- * of the basis vectors.
+ * the basis matrix generated in this function is the transpose of the basis matrix. 
+ * the function also updates the origin of the basis vectors.
  */
-arma::mat clustering::lmclus::LMCLUS::formBasis(const arma::mat &points, const arma::rowvec& origin)
-//arma::rowvec formBasis(arma::mat &points, arma::mat &basis)
+arma::mat clustering::lmclus::LMCLUS::formBasis(const arma::mat &points, arma::rowvec& origin)
 {
+    origin = points.row(0);  // let the origin be the fisrt point sampled
     arma::mat basis(points.n_rows-1, points.n_cols);   // create the B (Basis) transpose matrix
-    
-    arma::rowvec b_i;    // let the origin be the fisrt point sampled
-    //LOG_TRACE(log) << "Origin: \n" << origin;
 
     // find the b_i-th basis vector by subtracting each other point (vector) from 'x_1'
+    arma::rowvec b_i;
     for (size_t i=1; i < points.n_rows ; i++) {
-        //LOG_TRACE(log) << "i: \n" << points.row(i);
         b_i = points.row(i) - origin;
-        //LOG_TRACE(log) << "b_" << i << ": \n" << b_i;
         basis.row(i-1) = b_i;   // set the i-th row in the transpose basis matrix to its b_i-th basis vector
-        //LOG_TRACE(log) << "B: \n" << basis;
     }
     
     return basis;
-    //return std::make_pair(origin, basis);
 }
 
 /* GramSchmidtOrthogonalization
@@ -231,13 +223,14 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
 {
     arma::mat B( M.n_rows, M.n_cols );       // create an uninitialized orthogonal basis matrix
 
-    for(unsigned int i=0; i< M.n_rows; i++) {         // for each vector in the original basis convert to an orthogonal vector
+    for(unsigned int i=0; i< M.n_rows; i++) {// for each vector in the original basis convert to an orthogonal vector
         auto m_i = M.row(i);                 // the i-th original basis vector
         
         arma::rowvec x_i( M.n_cols );
+        x_i.zeros();
 
         double x_j;
-        for (unsigned int j=0; j < i; j++) {          // calculate the sum of i-th vector's components in the directions of the
+        for (unsigned int j=0; j < i; j++) { // calculate the sum of i-th vector's components in the directions of the
             // already settled orthogonal basis vectors
             auto b_j = B.row(j);
             x_j = arma::dot( b_j, m_i );
@@ -246,8 +239,7 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
         arma::rowvec b_i = m_i - x_i;        // subtract the sum calculated above (stored in x_i) from the i-th unsettled vector
         double n= arma::norm(b_i, 2);        // make b_i a unit vector
         if(n!=0.0)
-            b_i = b_i * (1/n);
-
+            b_i = b_i * (1/n);        
         B.row(i) = b_i;
     }
     //LOG_TRACE(log) << "B: \n" << B;
@@ -260,7 +252,7 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
  * ------------------
  * determine the distance of each point in the data set from to a linear manifold,
  *  using: d_n= || (I-P)(z_n-origin) ||
- * where P is the projection matrix, and z_n is the point.
+ * where P is the projection operator matrix, and z_n is the point.
  * (the distance will not be determined for points that were already sampled to create the linear manifold).
  * depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
  */
@@ -287,93 +279,47 @@ arma::vec clustering::lmclus::LMCLUS::determineDistances(
         auto sampleIndex = sample(data.n_rows, n);
         data1 = data.rows(sampleIndex);
     }
-
+    
     // vector to hold distances of points from basis
-    arma::vec d_v, Distances = arma::zeros<arma::vec>(data1.n_rows);
-    arma::rowvec Z_n;
-    double d_n, c, b;
+    arma::vec Distances = arma::zeros<arma::vec>(data1.n_rows);
     unsigned int i;
-    
-    //LOG_INFO(log)<<"Data rows: " << data1.n_rows << ", cols: "<< data1.n_cols;
-    //LOG_INFO(log)<<"P rows: " << P.n_rows << ", cols: "<< P.n_cols;
-    for (i=0; i < data1.n_rows; i++) {
-        // point with respect to basis
-        Z_n = data1.row(i) - origin;
-        // calculate distance of point from basis: d_n= || (I-P)(z_n-origin) ||
-        d_v = P * Z_n.t();
-        c=arma::norm(Z_n, 2);
-        b=arma::norm(d_v, 2);
-        d_n=sqrt((c*c)-(b*b));
-        if(d_n>=0 && d_n<1000000000)
-            Distances(i) = d_n;
+    #pragma omp parallel for private(i) shared(data1, origin, P, Distances)
+    for (i=0; i < Distances.n_rows; i++) {
+        Distances(i) = distanceToManifold(data1.row(i) - origin, P);
     }
-    
-//    data1.each_row() -= origin;
-//    arma::mat d_m = P * data1.t();
-//    //LOG_INFO(log)<<"DM rows: " << d_m.n_rows << ", cols: "<< d_m.n_cols;
-//    for (i=0; i < d_m.n_cols; i++) {
-//        c=arma::norm(data1.row(i), 2);
-//        b=arma::norm(d_m.col(i), 2);
-//        d_n=sqrt((c*c)-(b*b));
-//        if(d_n>=0 && d_n<1000000000)
-//            Distances(i) = d_n;
-//    }
 
     return Distances;
 }
-/*
-arma::vec clustering::lmclus::LMCLUS::determineDistances(
-    const arma::mat &data, const arma::mat &P, 
-    const arma::rowvec &origin, const Parameters &para)
+
+/* distanceToManifold
+ * ------------------
+ * calculates distance from point to manifold defined by basis and origin
+ * using: d_n= || (I-P)x || (1)
+ * where P is the projection operator matrix, and z_n is the point.
+ * But calculations are optimized in a following way
+ * || x ||^2 = || Px + (I-P)x ||^2
+ * || x ||^2 = || Px ||^2 + || (I-P)x ||^2
+ * because P = BB' and P^2 = BB'BB' = BIB' = BB' = P then
+ * || x ||^2 = || BB'x ||^2 + || (I-P)x ||^2
+ * but || BB'x ||^2 = (BB'x)'BB'x = x'BB'BB'x = x'BIB'x = x'BB'x = = (B'x)'B'x = || B'x ||^2
+ * so || x ||^2 = || B'x ||^2 + || (I-P)x ||^2
+ * || x ||^2 = || B'x ||^2 + d_n from (1)
+ * thus d_n = || x ||^2 -|| B'x ||^2
+ * where B is a basis matrix and B' - its transpose.
+ * Note: depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
+ */
+double clustering::lmclus::LMCLUS::distanceToManifold(
+    const arma::rowvec &point, const arma::mat &B_T)
 {
-    arma::mat data1;
-
-    if(para.HIS_SAMPLING) 
-    {
-        double Z_01=2.576;                               // Z random variable, confidence interval 0.99
-        double delta_p=0.2;
-        double delta_mu=0.1;
-        double P=1/static_cast<double>(para.NUM_OF_CLUS);
-        double Q=1-P;
-        double n1=(Q/P)*((Z_01*Z_01)/(delta_p*delta_p));
-        double p=( P<=Q ? P : Q );
-        double n2=(Z_01*Z_01)/(delta_mu*delta_mu*p);
-        double n3= ( n1 >= n2 ? n1 : n2 );
-        unsigned int n4= static_cast<int> (n3);
-        int n= ( data.n_rows <= n4 ? data.n_rows-1 : n4 );
-
-        auto sampleIndex = sample(data.n_rows, n);
-        data1 = arma::mat(data.rows(sampleIndex).t());
-    } else
-        data1 = arma::mat(data).t();
-
-    // vector to hold distances of points from basis
-    arma::vec d_v, Distances = arma::zeros<arma::vec>(data1.n_rows);
-    arma::rowvec Z_n;
-    double d_n, c, b;
-    unsigned int i, n, m;
-
-    data1.each_col() -= origin.t();
-    arma::mat d_m = P * data1;
-    n = d_m.n_cols;
-    m = d_m.n_rows;
-    std::vector<double> distances(n); 
-    //double *ddata = data1.memptr();
-    //double *dd_m = d_m.memptr();
-    //LOG_INFO(log)<<"DM rows: " << d_m.n_rows << ", cols: "<< d_m.n_cols;
-    //#pragma omp parallel for private(i, c, b, d_n) shared(distances)
-    for (i=0; i < n; i++) {
-        c=arma::norm(data1.col(i), 2);
-        b=arma::norm(d_m.col(i), 2);
-        d_n=sqrt((c*c)-(b*b));
-        if(d_n>=0 && d_n<1000000000)
-            distances[i] = d_n;
-    }
-    Distances = arma::conv_to<arma::vec>::from(distances);
-
-    return Distances;
+    double d_n = 0.0, c, b;
+    arma::vec d_v = B_T * point.t();
+    c=arma::norm(point, 2);
+    b=arma::norm(d_v, 2);
+    d_n=sqrt((c*c)-(b*b));
+    if(d_n<0 && d_n>1000000000)
+        d_n = 0.0;
+    return d_n;
 }
-*/
 
 /* findBestSeparation
  * --------------------
@@ -404,7 +350,7 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (c
 
         // form basis (transpose) of the linear manifold spanned by the sampled points (vectors)
         arma::mat sample = data.rows(points_idx);
-        auto origin = sample.row(0); 
+        arma::rowvec origin = sample.row(0); 
         auto basis = formBasis(sample, origin);
         LOG_TRACE(log) << "Origin: \n" << origin << "Collected basis :\n" << basis <<std::endl;
         // orthogonalize Basis ( with orthonormal basis-vectors)
@@ -476,16 +422,11 @@ void clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data, const Para
             LOG_TRACE(log) << "Threshold: " << threshold;
             LOG_TRACE(log) << "Origin: \n" << origin;
 
-            unsigned int idx;
-            for(unsigned int i=0; i < points_index.n_rows; i++) {
+            unsigned int i, idx;
+            //#pragma omp parallel for private(i, idx) shared(points_index, data)
+            for(i=0; i < points_index.n_rows; i++) {
                 idx = points_index(i);
-                arma::rowvec Z_n  = data.row(idx) - origin; // point with respect to basis
-                // calculate distance of point from basis:  d_n= || (I-P)(z_n-origin) ||
-                arma::vec d_v = Projection * Z_n.t();
-                double d_n=0;
-                double c = norm(Z_n, 2);
-                double b = norm(d_v, 2);
-                d_n=sqrt(fabs((c*c)-(b*b)));
+                double d_n = distanceToManifold(data.row(idx) - origin, Projection);
                 if(d_n < threshold)    // point i has distances less than the threshold value
                     best_points.push_back(idx);          // add to best points
                 else
@@ -545,13 +486,11 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
         //find_manifold(data, para, points_index, nonClusterPoints, separations, Noise, SepDim);
 
         for(int lm_dim=1; lm_dim < para.MAX_DIM+1 && !Noise; lm_dim++) {
-            
             while(true) {
                 // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
                 Separation best_sep=findBestSeparation(data.rows(points_index), lm_dim, para);
                 //LOG_TRACE(log) << "Proj: \n"<< best_sep.get_projection();
                 LOG_DEBUG(log) << "BEST_BOUND: "<< best_sep.get_criteria() << "(" << para.BEST_BOUND << ")";
-                
                 if (best_sep.get_criteria() < para.BEST_BOUND ) break;
                 SepDim=lm_dim;
                 
@@ -564,8 +503,9 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                 LOG_TRACE(log) << "Threshold: " << threshold;
                 LOG_TRACE(log) << "Origin: \n" << origin;
 
-                unsigned int idx;
-                for(unsigned int i=0; i < points_index.n_rows; i++) {
+                unsigned int i, idx;
+                /*
+                for(i=0; i < points_index.n_rows; i++) {
                     idx = points_index(i);
                     arma::rowvec Z_n  = data.row(idx) - origin; // point with respect to basis
                     // calculate distance of point from basis:  d_n= || (I-P)(z_n-origin) ||
@@ -578,8 +518,15 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                         best_points.push_back(idx);          // add to best points
                     else
                         nonClusterPoints.push_back(idx);
+                } */
+                for(i=0; i < points_index.n_rows; i++) {
+                    idx = points_index(i);
+                    double d_n = distanceToManifold(data.row(idx) - origin, Projection);
+                    if(d_n < threshold)    // point i has distances less than the threshold value
+                        best_points.push_back(idx);          // add to best points
+                    else
+                        nonClusterPoints.push_back(idx);
                 }
-                
                 LOG_DEBUG(log) << "Separated points: "<< best_points.size();
                 points_index = arma::conv_to<arma::uvec>::from(best_points);                
                                 

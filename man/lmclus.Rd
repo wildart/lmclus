@@ -1,7 +1,6 @@
 \name{lmclus}
 \alias{lmclus}
 \alias{lmclusPure}
-\alias{lmclus.default}
 
 \title{Linear Manifold Clustering}
 \description{
@@ -13,8 +12,7 @@ lmclusPure( X, maxDim, numOfClus, noiseSize, bestBound,
             errorBound, maxBinPortion, hisSampling, hisConstSize,
             sampleHeuristic, sampleFactor, randomSeed, showLog )
 
-lmclus(X, \dots)
-\method{lmclus}{default}(X, params, \dots)
+lmclus(X, params)
 }
 
 \arguments{

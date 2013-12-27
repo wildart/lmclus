@@ -75,6 +75,17 @@ lmclusPure <- function(X, maxDim, numOfClus, noiseSize, bestBound, errorBound, m
           package = "lmclus")
 }
 
+kittlerPure <- function(normH, minD, maxD) 
+{    
+    .Call("kittler", normH, minD, maxD, package = "lmclus")
+}
+
+distToManifoldPure <- function(p, B_T) 
+{
+    .Call("distToManifold", p, B_T, package = "lmclus")
+}
+
+
 lmclus <- function(X, ...) UseMethod("lmclus")
 
 lmclus.default <- function(X, params, ...) 
@@ -105,30 +116,44 @@ lmclus.default <- function(X, params, ...)
     res
 }
 
-print.lmclus <- function(x, ...) {
-    cat("\nCall:\n")
-    print(x$call)
-    cat("\nClusters:\n")
-    print(x$clusters)
-    cat("\nCluster dimensions:\n")
-    print(x$cluster_dimensions)
+
+lmclus.kittler <- function(v, bins)
+{
+    v <- as.vector(v[!is.na(v)])
+    vl <- length(v)
+    vmin <- min(v)
+    vmax <- max(v)
+    if (missing(bins))
+        bins <- 100
+
+    h <- hist(v, breaks=bins, plot=FALSE)
+    hnorm <- h$counts/vl
+
+    res <- kittlerPure(hnorm, vmin, vmax)
+
+    res <- c(list(hist=hnorm), res)
+    return(res)
 }
 
-kittlerPure <- function(Xnorm, minX, maxX) 
-{    
-    .Call("kittler", Xnorm, minX, maxX, package = "lmclus")
+# Calculate distance to cluster
+lmclus.distToManifold <- function(p, B, origin)
+{
+    # Translate to origin if avalible
+    if (missing(origin))
+        p <- as.vector(p)
+    else
+        p <- as.vector(p - origin)
+
+    res <- distToManifoldPure(p, t(B))
+    
+    return(res)
 }
 
-kittler <- function(X, ...) UseMethod("kittler")
-
-kittler.default <- function(Xnorm, minX, maxX, ...)
-{        
-    Xnorm <- as.matrix(Xnorm)
-
-    res <- lmclusPure(Xnorm, minX, maxX)
-    
-    res$call <- match.call()
-    
-    class(res) <- "kittler"
-    res
+# Extract specified cluster
+lmclus.get_cluster <- function(results, id){
+    clust = list(id, results$cluster_dimensions[id], results$origins[[id]], 
+                 results$bases[[id]], results$clusters[[id]], results$thresholds[id])
+    names(clust) = c("id", "dim", "origin", "basis", "labels", "threshold")
+    return(clust)
+    print(clust)
 }

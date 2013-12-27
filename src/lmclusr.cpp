@@ -27,34 +27,77 @@ void output_callback(const char *msg){
 
 extern "C" {
     
-SEXP kittler(SEXP Xs, SEXP minX, SEXP maxX) 
+
+SEXP distToManifold(SEXP x, SEXP b_t) 
 {
-    int n, nprotect = 0;
+    int l, n, m;
     try{
-    SEXP Rdim = getAttrib(Xs, R_DimSymbol);
+    // Get point
+    l = LENGTH(x);
+    x = AS_NUMERIC(x);
+    arma::rowvec point(REAL(x), l, false);
+    // Get basis
+    SEXP Rdim = getAttrib(b_t, R_DimSymbol);
     n = INTEGER(Rdim)[0];
     m = INTEGER(Rdim)[1];
-    Xs = AS_NUMERIC(Xs);
-    arma::vec hist(REAL(Xs), n, false);
-    double RHmin = hist.min();
-    double RHmax = hist.max();
+    b_t = AS_NUMERIC(b_t);
+    arma::mat B_T(REAL(b_t), n, m, false);
+    // Calculate distance
+    double dist = clustering::lmclus::LMCLUS::distanceToManifold(point, B_T);
+    return ScalarReal(dist);
+    } catch(...) {         
+        ::Rf_error( "c++ exception (unknown reason)" ); 
+    }
+    return R_NilValue;
+}    
+
+SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) 
+{
+    int i, n, nprotect = 0;
+    try{
+    n = LENGTH(nH);    
+    nH = AS_NUMERIC(nH);
+    arma::vec hist(REAL(nH), n, false);
+    double RHmin = REAL(minX)[0];
+    double RHmax = REAL(maxX)[0];
     Kittler K;
-    K.FindThreshold(hist, RHmin, RHmax);    
+    bool res = K.FindThreshold(hist, RHmin, RHmax);
+    if(!res)
+        Rprintf("no minimum, unimode histogram\n");
     
-    SEXP Return_lst, Rnames, Rthreshold, Rseparation;
+    SEXP Return_lst, Rnames, Rthreshold, Rdiscriminability, Rdepth, 
+         Rcriterion, Rglobalmin, Rminidx;
     PROTECT(Rthreshold = ScalarReal(K.GetThreshold())); nprotect++;
-    PROTECT(Rseparation = ScalarReal(K.GetDiscrim()*K.GetDepth())); nprotect++;    
-    PROTECT(Return_lst = allocVector(VECSXP,2)); nprotect++;
+    PROTECT(Rdiscriminability = ScalarReal(K.GetDiscrim())); nprotect++;
+    PROTECT(Rdepth = ScalarReal(K.GetDepth())); nprotect++;
+    PROTECT(Rglobalmin = ScalarReal(K.GetGlobalMin())); nprotect++;
+    PROTECT(Rminidx = ScalarInteger(K.GetMinIndex())); nprotect++;
+    // Criterion function
+    auto cf = K.GetCriterionFunc();
+    PROTECT(Rcriterion = allocVector(REALSXP,cf.size())); nprotect++;
+    for (i = 0; i < cf.size(); ++i)
+        REAL(Rcriterion)[i] = cf[i];
+        
+    // Result
+    PROTECT(Return_lst = allocVector(VECSXP,6)); nprotect++;
     
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(2)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(6)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("threshold"));
-    SET_STRING_ELT(Rnames, 1, mkChar("separation"));    
+    SET_STRING_ELT(Rnames, 1, mkChar("discriminability"));
+    SET_STRING_ELT(Rnames, 2, mkChar("depth"));
+    SET_STRING_ELT(Rnames, 3, mkChar("criterion"));
+    SET_STRING_ELT(Rnames, 4, mkChar("globalmin"));
+    SET_STRING_ELT(Rnames, 5, mkChar("minindex"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
     SET_VECTOR_ELT(Return_lst, 0, Rthreshold);
-    SET_VECTOR_ELT(Return_lst, 1, Rseparation);
+    SET_VECTOR_ELT(Return_lst, 1, Rdiscriminability);
+    SET_VECTOR_ELT(Return_lst, 2, Rdepth);
+    SET_VECTOR_ELT(Return_lst, 3, Rcriterion);
+    SET_VECTOR_ELT(Return_lst, 4, Rglobalmin);
+    SET_VECTOR_ELT(Return_lst, 5, Rminidx);
 
     UNPROTECT(nprotect);
     return Return_lst;
@@ -112,12 +155,12 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     std::vector<arma::mat> bases; 
     std::vector<int> clusterDims;
     std::vector<arma::vec> origins;
-    
+
     clustering::lmclus::LMCLUS lmclus(&log); 
     lmclus.cluster(data, params, labels, thresholds, bases, clusterDims, origins, output_callback);
     if (show_log)
         Rprintf("%s", log.getString().c_str());
-    
+
     Rprintf("Clusters found: %d\n", labels.size());
     
     SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases, Rorigins;
@@ -145,7 +188,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     // Bases
     PROTECT(Rbases = allocVector(VECSXP,bases.size())); nprotect++;
     for (i = 0; i < bases.size(); ++i){
-        int r = bases[i].n_rows, c = bases[i].n_cols;
+        unsigned int r = bases[i].n_rows, c = bases[i].n_cols;
         SEXP bss;
         PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;        
         for (j = 0; j < r; ++j)

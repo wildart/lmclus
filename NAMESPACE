@@ -1,5 +1,5 @@
 useDynLib(liblmclusr)
-export(lmclusPure, lmclus)
+export(lmclusPure, lmclus, distToManifoldPure, lmclus.distToManifold, lmclus.kittler, lmclus.get_cluster)
 S3method(lmclus, default)
 exportClass(lmclus.params)
 
