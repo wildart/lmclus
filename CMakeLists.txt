@@ -6,7 +6,7 @@ message(STATUS "Configuring LMCLUS")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
 # gcc flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-deprecated -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-deprecated -O2")
 
 include_directories(include/armadillo)
 include_directories(include/cpplog)

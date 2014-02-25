@@ -10,7 +10,7 @@ Installation
 To use lmclus you do not need to recompile the LMCLUS shared library. If you only want to create R extensions then 
     
     $ git clone https://github.com/wildart/lmclus.git
-    $ R CMD INSTALL --lmclus
+    $ R CMD INSTALL lmclus
 
 The LMCLUS shared object is built via CMake (www.cmake.org). To build from the command line:
 

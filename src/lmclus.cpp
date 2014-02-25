@@ -1,4 +1,5 @@
- /* ********************************************************************************
+ /* Copyright 2005-2014 Pattern Recognition Laboratory, The City University of New York
+  * *******************************************************************************
   * * TITLE:        lmclus.cpp
   * *
   * * PURPOSE:      A linear manifold clustering algorithm based on the paper
@@ -30,8 +31,7 @@
   * *               Rewrote with armadillo
   * *               email: adiky@sci.brooklyn.cuny.edu
   * *               02/18/2013
-  * *
-  * * Copyright 2005-2013 Pattern Recognition Laboratory, The City University of New York
+  * *  
   * **********************************************************************************/
 
 #include <vector>
@@ -40,15 +40,14 @@
 #include <limits>
 #include <chrono>
 
-#include "Kittler.h"
+#include "Kittler.hpp"
 #include "lmclus.hpp"
 
 #define EPS 1e-8
 
 /* Random number generator
  */
-unsigned int clustering::lmclus::LMCLUS::randromNumber()
-{
+unsigned int clustering::lmclus::LMCLUS::randromNumber() {
     return dist(engine);
 }
 
@@ -391,7 +390,7 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (c
     }
 
     if (best_sep.get_criteria()==0)
-        LOG_DEBUG(log) << "no good histograms to spearate data !!!";
+        LOG_DEBUG(log) << "no good histograms to separate data !!!";
     else {
         LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="<<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();
     }
