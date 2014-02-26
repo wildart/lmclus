@@ -83,7 +83,7 @@ bool Kittler::FindThreshold(const arma::vec &H, double RHmin, double RHmax) {
     if (FindGlobalMin(IsMin, J) == false) {  // no minimum, unimode histogram
         return false;
     } else {  // compute separation statistics
-        MinIndex = static_cast<int> (GlobalMin);
+        MinIndex = static_cast<unsigned int> (GlobalMin);
         Threshold = RHmin + ((GlobalMin+1) * (RHmax - RHmin) / N);
         Discriminability = (fabs(Mu1[MinIndex]-Mu2[MinIndex]))/
                             (sqrt(Var1[MinIndex]+Var2[MinIndex]));

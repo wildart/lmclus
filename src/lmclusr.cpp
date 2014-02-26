@@ -18,7 +18,7 @@
 #include <R.h>
 #include <Rdefines.h>
 #include <vector>
-#include "Kittler.hpp"
+
 #include "lmclus.hpp"
 
 void output_callback(const char *msg) {
@@ -49,7 +49,7 @@ SEXP distToManifold(SEXP x, SEXP b_t) {
 }
 
 SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
-    int i, n, nprotect = 0;
+    unsigned int i, n, nprotect = 0;
     try {
     n = LENGTH(nH);
     nH = AS_NUMERIC(nH);
@@ -150,10 +150,11 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     std::vector<arma::mat> bases;
     std::vector<int> clusterDims;
     std::vector<arma::vec> origins;
+    std::vector<clustering::lmclus::Separation> separations;
 
     clustering::lmclus::LMCLUS lmclus(&log);
     lmclus.cluster(data, params, labels, thresholds, bases, clusterDims,
-                    origins, output_callback);
+                    origins, separations, output_callback);
     if (show_log)
         Rprintf("%s", log.getString().c_str());
 

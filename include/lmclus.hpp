@@ -38,6 +38,8 @@
 #include <vector>
 #include <armadillo>
 
+#include "Kittler.hpp"
+
 #define CPPLOG_FILTER_LEVEL 2
 #include "cpplog.hpp"
 
@@ -64,8 +66,8 @@ public:
 	double get_threshold () const {
 		return threshold;
 	}
-	arma::uvec get_histo() const {
-		return histo;
+	arma::uvec get_histogram() const {
+		return histogram;
 	}
 	arma::mat get_projection () const {
 		return projection;
@@ -73,28 +75,33 @@ public:
 	arma::rowvec get_origin() const {
 		return origin;
 	}
+	unsigned int get_global_min() const {
+		return global_min;
+	}
 	void reset(){
 		criteria = -1;
 	}
-	
-	Separation(double w, double d, double thres, const arma::rowvec &org ,const arma::mat &p, arma::uvec &h):
-		origin(org),projection(p),sep_width(w),sep_depth(d),threshold(thres),histo(h)
-	{
-		criteria=sep_width*sep_depth;
+
+	Separation(double w, double d, double thres, const arma::rowvec &org,
+	    const arma::mat &p, arma::uvec &h):
+	    origin(org), projection(p), sep_width(w), sep_depth(d), 
+	    threshold(thres), global_min(0), histogram(h) {
+        criteria=sep_width*sep_depth;
 	}
 
-	Separation ():
-		origin(1),projection(1,1),sep_width(0),sep_depth(0),threshold(0),criteria(-1){}
+	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
+	    threshold(0), global_min(0), criteria(-1){}
 		
 	virtual ~Separation () {};
-	
+
 private:
 	arma::rowvec origin;                  // origin of subspace, used to find points that will be separated from data
 	arma::mat projection;                 // subspace projection matrix, used to find points that will be separated from data
 	double sep_width;                     // separation width
 	double sep_depth;                     // separation depth
 	double threshold;                     // histogram's threshold
-	arma::uvec histo;                      // the histogram kittler's algorithm is applied on		
+	unsigned int global_min;              // histogram's global minimum
+	arma::uvec histogram;                 // the histogram kittler's algorithm is applied on
 	double criteria;                      // goodness of separation (width*depth)
 
 };
@@ -199,7 +206,9 @@ public:
     void cluster(const arma::mat &data, const Parameters &para, 
                  std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
                  std::vector<arma::mat> &bases, std::vector<int> &clusterDims,
-                 std::vector<arma::vec> &origins, callback_t progress = nullptr);
+                 std::vector<arma::vec> &origins, 
+                 std::vector<Separation> &separations, 
+                 callback_t progress = nullptr);
 };
 
 } // lmclus namespace

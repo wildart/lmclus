@@ -40,7 +40,6 @@
 #include <limits>
 #include <chrono>
 
-#include "Kittler.hpp"
 #include "lmclus.hpp"
 
 #define EPS 1e-8
@@ -458,41 +457,40 @@ void clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data, const Para
 void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
     std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
     std::vector<arma::mat> &bases, std::vector<int> &clusterDims, 
-    std::vector<arma::vec> &origins, callback_t progress)
-{
+    std::vector<arma::vec> &origins, 
+    std::vector<clustering::lmclus::Separation> &separations, callback_t progress) {
+
     // Initialize random generator
-    if(para.RANDOM_SEED>0)
+    if (para.RANDOM_SEED>0) {
         engine.seed(para.RANDOM_SEED);
-    else 
-    {
+    } else {
         // obtain a seed from the system clock:
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         engine.seed(seed);
     }
-    
+
     std::vector<unsigned int> noise;
     bool groupNoise = true;
-
-    std::vector<Separation> separations;
     arma::uvec points_index = arma::linspace<arma::uvec>(0, data.n_rows, data.n_rows);
 
     int ClusterNum=0;
     do {
-        bool Noise=false;
+        Separation best_sep;
+        bool Noise = false;
         std::vector<unsigned int> nonClusterPoints;
-        int SepDim=0;                             // dimension in which separation was found
+        int SepDim = 0;     // dimension in which separation was found
         
         //find_manifold(data, para, points_index, nonClusterPoints, separations, Noise, SepDim);
 
-        for(int lm_dim=1; lm_dim < para.MAX_DIM+1 && !Noise; lm_dim++) {
+        for (int lm_dim = 1; lm_dim < para.MAX_DIM+1 && !Noise; lm_dim++) {
             while(true) {
                 // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
-                Separation best_sep=findBestSeparation(data.rows(points_index), lm_dim, para);
-                //LOG_TRACE(log) << "Proj: \n"<< best_sep.get_projection();
+                best_sep = findBestSeparation(data.rows(points_index), lm_dim, para);
+                // LOG_TRACE(log) << "Proj: \n"<< best_sep.get_projection();
                 LOG_DEBUG(log) << "BEST_BOUND: "<< best_sep.get_criteria() << "(" << para.BEST_BOUND << ")";
                 if (best_sep.get_criteria() < para.BEST_BOUND ) break;
-                SepDim=lm_dim;
-                
+                SepDim = lm_dim;
+
                 // find which points are close to manifold 
                 std::vector<unsigned int> best_points;
                 double threshold = best_sep.get_threshold();
@@ -521,21 +519,20 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                 for(i=0; i < points_index.n_rows; i++) {
                     idx = points_index(i);
                     double d_n = distanceToManifold(data.row(idx) - origin, Projection);
-                    if(d_n < threshold)    // point i has distances less than the threshold value
+                    if (d_n < threshold)    // point i has distances less than the threshold value
                         best_points.push_back(idx);          // add to best points
                     else
                         nonClusterPoints.push_back(idx);
                 }
                 LOG_DEBUG(log) << "Separated points: "<< best_points.size();
                 points_index = arma::conv_to<arma::uvec>::from(best_points);                
-                                
-                if(points_index.n_rows< para.NOISE_SIZE) {       // small amount of points is considered noise
+
+                if (points_index.n_rows < para.NOISE_SIZE) {       // small amount of points is considered noise
                     Noise=true;
                     LOG_INFO(log)<<"noise less than "<<para.NOISE_SIZE<<" points";
                     break;
                 }
                 
-                separations.push_back(best_sep);
                 LOG_DEBUG(log) << "Best basis:"<< std::endl << best_sep.get_projection();
             }
 
@@ -545,7 +542,6 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                 LOG_INFO(log)<<"no separation, increasing dim ...";
             else
                 LOG_INFO(log)<<"no separation ...";
-
         }
 
         // second phase (steps 9-12)
@@ -570,16 +566,16 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                 labels.push_back(points_index);
             
             // Save cluster basis
-            if (separations.size() > 0)
+            if (best_sep.get_global_min() != 0)
             {
-                Separation bs = separations[separations.size()-1];
-                bases.push_back(bs.get_projection());
-                thresholds.push_back(bs.get_threshold());
-                origins.push_back(bs.get_origin());
-            
-                LOG_TRACE(log) << "Basis: \n"<< bs.get_projection();
-                LOG_TRACE(log) << "Origin: " << bs.get_origin();
-                LOG_TRACE(log) << "Threshold: " << bs.get_threshold();
+                bases.push_back(best_sep.get_projection());
+                thresholds.push_back(best_sep.get_threshold());
+                origins.push_back(best_sep.get_origin());
+                separations.push_back(best_sep);
+
+                LOG_TRACE(log) << "Basis: \n"<< best_sep.get_projection();
+                LOG_TRACE(log) << "Origin: " << best_sep.get_origin();
+                LOG_TRACE(log) << "Threshold: " << best_sep.get_threshold();
             }
             else
             {
@@ -588,20 +584,18 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters
                 origins.push_back(arma::zeros<arma::vec>(para.MAX_DIM+1));
             }    
         }
-        
+
         // separate cluster points from the rest of the data
         points_index = arma::conv_to<arma::uvec>::from(nonClusterPoints);
-        separations.clear();
-        
+
         // Stop clustering if we reached limit
         if (ClusterNum == para.NUM_OF_CLUS) break;
 
-    } while(points_index.n_rows > para.NOISE_SIZE);
+    } while (points_index.n_rows > para.NOISE_SIZE);
     
     // take care of remaining points
-    if(points_index.n_rows>0)
-    {
-        for(unsigned int c=0; c<points_index.n_rows; ++c)
+    if (points_index.n_rows > 0) {
+        for (unsigned int c = 0; c < points_index.n_rows; ++c)
             noise.push_back(points_index(c));
     }
     
