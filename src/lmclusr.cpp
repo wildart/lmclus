@@ -29,11 +29,10 @@ extern "C" {
     
 SEXP kittler(SEXP Xs, SEXP minX, SEXP maxX) 
 {
-    int n, nprotect = 0;
+    unsigned int n, nprotect = 0;
     try{
     SEXP Rdim = getAttrib(Xs, R_DimSymbol);
     n = INTEGER(Rdim)[0];
-    m = INTEGER(Rdim)[1];
     Xs = AS_NUMERIC(Xs);
     arma::vec hist(REAL(Xs), n, false);
     double RHmin = hist.min();
@@ -145,7 +144,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     // Bases
     PROTECT(Rbases = allocVector(VECSXP,bases.size())); nprotect++;
     for (i = 0; i < bases.size(); ++i){
-        int r = bases[i].n_rows, c = bases[i].n_cols;
+        size_t r = bases[i].n_rows, c = bases[i].n_cols;
         SEXP bss;
         PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;        
         for (j = 0; j < r; ++j)
