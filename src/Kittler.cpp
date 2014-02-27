@@ -16,6 +16,8 @@
 #include <cmath>
 #include <deque>
 #include <vector>
+#include <armadillo>
+
 #include "Kittler.hpp"
 
 /* FindThreshold

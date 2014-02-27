@@ -83,9 +83,9 @@ public:
 	}
 
 	Separation(double w, double d, double thres, const arma::rowvec &org,
-	    const arma::mat &p, arma::uvec &h):
+	    const arma::mat &p, arma::uvec &h, unsigned int gm):
 	    origin(org), projection(p), sep_width(w), sep_depth(d), 
-	    threshold(thres), global_min(0), histogram(h) {
+	    threshold(thres), global_min(gm), histogram(h) {
         criteria=sep_width*sep_depth;
 	}
 

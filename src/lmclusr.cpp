@@ -15,11 +15,12 @@
  *
  * =====================================================================================
  */
+#include <armadillo>
+#include "lmclus.hpp"
+
 #include <R.h>
 #include <Rdefines.h>
-#include <vector>
 
-#include "lmclus.hpp"
 
 void output_callback(const char *msg) {
     Rprintf("%s\n", msg);
