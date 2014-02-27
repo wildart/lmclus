@@ -127,13 +127,9 @@ int main ( int argc, char *argv[] )
     // Process data
     clustering::lmclus::LMCLUS lmclus(log);
     std::vector<arma::uvec> labels;
-    std::vector<double> thresholds; 
-    std::vector<arma::mat> basises; 
     std::vector<int> clusterDims;
-    std::vector<arma::vec> origins;
     std::vector<clustering::lmclus::Separation> separations;
-    lmclus.cluster(data, params, labels, thresholds, basises, 
-        clusterDims, origins, separations, progress);
+    lmclus.cluster(data, params, labels, clusterDims, separations, progress);
     
     // Process results
     size_t clusterNum = labels.size();
@@ -142,12 +138,11 @@ int main ( int argc, char *argv[] )
     {
         LOG_INFO(log) << "Cluster " << i << " dimension: " << clusterDims[i] << ", size: " << labels[i].n_elem <<"\n";
         //LOG_INFO(log) << "Labels: " << labels[i].t();
-        LOG_INFO(log) << "Basis: \n"<< basises[i];
+        LOG_INFO(log) << "Basis: \n"<< separations[i].get_projection();
     }
     
     LOG_INFO(log) << "labels found: " << labels.size();
-    LOG_INFO(log) << "thresholds found: " << thresholds.size();
-    LOG_INFO(log) << "basises found: " << basises.size();
+    LOG_INFO(log) << "separations found: " << separations.size();
     LOG_INFO(log) << "clusterDims found: " << clusterDims.size();
     
     // Clear log

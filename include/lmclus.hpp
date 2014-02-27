@@ -63,13 +63,13 @@ public:
 	double get_criteria() const {
 		return criteria;
 	}
-	double get_threshold () const {
+	double get_threshold() const {
 		return threshold;
 	}
 	arma::uvec get_histogram() const {
 		return histogram;
 	}
-	arma::mat get_projection () const {
+	arma::mat get_projection() const {
 		return projection;
 	}
 	arma::rowvec get_origin() const {
@@ -83,7 +83,7 @@ public:
 	}
 
 	Separation(double w, double d, double thres, const arma::rowvec &org,
-	    const arma::mat &p, arma::uvec &h, unsigned int gm):
+	    const arma::mat &p, const arma::uvec &h, unsigned int gm):
 	    origin(org), projection(p), sep_width(w), sep_depth(d), 
 	    threshold(thres), global_min(gm), histogram(h) {
         criteria=sep_width*sep_depth;
@@ -199,15 +199,15 @@ public:
     arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
     static double distanceToManifold(const arma::rowvec &point, const arma::mat &B_T);
     
-    void find_manifold(const arma::mat &data, const Parameters &para, 
-                 arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
-                 std::vector<Separation> &separations, bool &Noise, int &SepDim);
+    void find_manifold(const arma::mat &data, const Parameters &para,
+                 arma::uvec &points_index,
+                 std::vector<unsigned int> &nonClusterPoints,
+                 std::vector<Separation> &separations,
+                 bool &Noise, int &SepDim);
     
-    void cluster(const arma::mat &data, const Parameters &para, 
-                 std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
-                 std::vector<arma::mat> &bases, std::vector<int> &clusterDims,
-                 std::vector<arma::vec> &origins, 
-                 std::vector<Separation> &separations, 
+    void cluster(const arma::mat &data, const Parameters &para,
+                 std::vector<arma::uvec> &labels, std::vector<int> &clusterDims,
+                 std::vector<Separation> &separations,
                  callback_t progress = nullptr);
 };
 

@@ -152,8 +152,10 @@ lmclus.distToManifold <- function(p, B, origin)
 # Extract specified cluster
 lmclus.get_cluster <- function(results, id){
     clust = list(id, results$cluster_dimensions[id], results$origins[[id]], 
-                 results$bases[[id]], results$clusters[[id]], results$thresholds[id])
-    names(clust) = c("id", "dim", "origin", "basis", "labels", "threshold")
+                 results$bases[[id]], results$clusters[[id]], results$thresholds[id], 
+                 results$histograms[[id]], results$global_mins[id])
+    names(clust) = c("id", "dim", "origin", "basis", "labels", 
+                        "threshold", "histogram", "global_mins")
     return(clust)
     print(clust)
 }

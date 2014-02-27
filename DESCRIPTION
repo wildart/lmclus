@@ -1,6 +1,6 @@
 Package: lmclus
-Version: 1.0.0
-Date: 2013-2-20
+Version: 1.1.0
+Date: 2014-2-27
 Title: Linear manifold clustering algorithm 
 Author: Rave Harpaz, Art Diky
 Maintainer: Art Diky <adiky@gc.cuny.edu> 

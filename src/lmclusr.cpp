@@ -147,29 +147,26 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     }
 
     std::vector<arma::uvec> labels;
-    std::vector<double> thresholds;
-    std::vector<arma::mat> bases;
     std::vector<int> clusterDims;
-    std::vector<arma::vec> origins;
     std::vector<clustering::lmclus::Separation> separations;
 
     clustering::lmclus::LMCLUS lmclus(&log);
-    lmclus.cluster(data, params, labels, thresholds, bases, clusterDims,
-                    origins, separations, output_callback);
+    lmclus.cluster(data, params, labels, clusterDims, separations, output_callback);
     if (show_log)
         Rprintf("%s", log.getString().c_str());
 
     Rprintf("Clusters found: %d\n", labels.size());
 
-    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases, Rorigins;
+    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, 
+        Rbases, Rorigins, Rhistograms, Rhmins;
 
      // Thresholds
-    PROTECT(Rthresholds = allocVector(REALSXP, thresholds.size())); nprotect++;
-    for (i = 0; i < thresholds.size(); ++i)
-        REAL(Rthresholds)[i] = thresholds[i];
+    PROTECT(Rthresholds = allocVector(REALSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i)
+        REAL(Rthresholds)[i] = separations[i].get_threshold();
 
     // Dimensions
-    PROTECT(RclusterDims = allocVector(INTSXP, thresholds.size())); nprotect++;
+    PROTECT(RclusterDims = allocVector(INTSXP, clusterDims.size())); nprotect++;
     for (i = 0; i < clusterDims.size(); ++i)
       INTEGER(RclusterDims)[i] = clusterDims[i];
 
@@ -184,37 +181,57 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     }
 
     // Bases
-    PROTECT(Rbases = allocVector(VECSXP, bases.size())); nprotect++;
-    for (i = 0; i < bases.size(); ++i) {
-        unsigned int r = bases[i].n_rows, c = bases[i].n_cols;
+    PROTECT(Rbases = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::mat basis = separations[i].get_projection();
+        unsigned int r = basis.n_rows, c = basis.n_cols;
         SEXP bss;
         PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;
         for (j = 0; j < r; ++j)
             for (k = 0; k < c; ++k)
-                REAL(bss)[j+r*k] = bases[i].at(j, k);
+                REAL(bss)[j+r*k] = basis.at(j, k);
         SET_VECTOR_ELT(Rbases, i, bss);
     }
 
     // Origins
-    PROTECT(Rorigins = allocVector(VECSXP, origins.size())); nprotect++;
-    for (i = 0; i < origins.size(); ++i) {
+    PROTECT(Rorigins = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::rowvec origin = separations[i].get_origin();
         SEXP orgn;
-        PROTECT(orgn = allocVector(REALSXP, origins[i].n_elem)); nprotect++;
-        for (j = 0; j < origins[i].n_elem; ++j)
-            REAL(orgn)[j] = origins[i][j];
+        PROTECT(orgn = allocVector(REALSXP, origin.n_elem)); nprotect++;
+        for (j = 0; j < origin.n_elem; ++j)
+            REAL(orgn)[j] = origin[j];
         SET_VECTOR_ELT(Rorigins, i, orgn);
     }
 
+    // Distance histogram
+    PROTECT(Rhistograms = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        auto histogram = separations[i].get_histogram();
+        SEXP hist;
+        PROTECT(hist = allocVector(INTSXP, histogram.n_elem)); nprotect++;
+        for (j = 0; j < histogram.n_elem; ++j)
+            INTEGER(hist)[j] = histogram[j];
+        SET_VECTOR_ELT(Rhistograms, i, hist);
+    }
+
+    // Histogram minimum
+    PROTECT(Rhmins = allocVector(INTSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i)
+      INTEGER(Rhmins)[i] = separations[i].get_global_min();
+
     // Result list
-    PROTECT(Return_lst = allocVector(VECSXP, 5)); nprotect++;
+    PROTECT(Return_lst = allocVector(VECSXP, 7)); nprotect++;
 
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(5)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(7)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("thresholds"));
     SET_STRING_ELT(Rnames, 1, mkChar("cluster_dimensions"));
     SET_STRING_ELT(Rnames, 2, mkChar("clusters"));
     SET_STRING_ELT(Rnames, 3, mkChar("bases"));
     SET_STRING_ELT(Rnames, 4, mkChar("origins"));
+    SET_STRING_ELT(Rnames, 5, mkChar("histograms"));
+    SET_STRING_ELT(Rnames, 6, mkChar("global_mins"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
@@ -223,6 +240,8 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_VECTOR_ELT(Return_lst, 2, Rlabels);
     SET_VECTOR_ELT(Return_lst, 3, Rbases);
     SET_VECTOR_ELT(Return_lst, 4, Rorigins);
+    SET_VECTOR_ELT(Return_lst, 5, Rhistograms);
+    SET_VECTOR_ELT(Return_lst, 6, Rhmins);
 
     UNPROTECT(nprotect);
     return Return_lst;
