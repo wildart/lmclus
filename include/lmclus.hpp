@@ -40,7 +40,7 @@
 
 #include "Kittler.hpp"
 
-#define CPPLOG_FILTER_LEVEL 2
+#define CPPLOG_FILTER_LEVEL 1
 #include "cpplog.hpp"
 
 namespace clustering {
@@ -91,6 +91,12 @@ public:
 
 	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
 	    threshold(0), global_min(0), criteria(-1){}
+	
+	Separation (int dim): sep_width(0.), sep_depth(0.), 
+	    threshold(0.), global_min(0.), histogram(1), criteria(-1) {
+	    origin = arma::zeros(dim);
+	    projection = arma::zeros(1,dim);
+	}
 		
 	virtual ~Separation () {};
 
@@ -163,7 +169,10 @@ private:
 
         
     // spearation detection functions
-    Separation findBestSeparation(const arma::mat &data, const int SubSpaceDim, const Parameters &para);
+    Separation findBestSeparation(const arma::mat &data, 
+        const int SubSpaceDim, const Parameters &para);
+    Separation findBestZeroManifoldSeparation(const arma::mat &data, 
+        const Parameters &para, const Separation &sep);
     //std::pair<arma::uvec, arma::uvec> findBestPoints(const arma::mat &data, const Separation &best_sep);
     
     arma::mat findBestPoints(const arma::mat &data, const Separation &sep, arma::mat &nonClusterPoints);
@@ -193,18 +202,19 @@ public:
         if (logCreated)
             delete log;
     }
-    
+
     // basis generation functions
     arma::mat formBasis(const arma::mat &points, arma::rowvec& origin);
     arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
     static double distanceToManifold(const arma::rowvec &point, const arma::mat &B_T);
-    
-    void find_manifold(const arma::mat &data, const Parameters &para,
+    static double projectTo1D(const arma::rowvec &point, const arma::mat &B_T);
+
+    bool find_manifold(const arma::mat &data, const Parameters &para,
                  arma::uvec &points_index,
                  std::vector<unsigned int> &nonClusterPoints,
-                 std::vector<Separation> &separations,
-                 bool &Noise, int &SepDim);
-    
+                 Separation &separations,
+                 bool &Noise, int SepDim);
+
     void cluster(const arma::mat &data, const Parameters &para,
                  std::vector<arma::uvec> &labels, std::vector<int> &clusterDims,
                  std::vector<Separation> &separations,
