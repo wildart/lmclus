@@ -418,63 +418,72 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation(
  * 2- create distance histograms of the data points to each trial linear manifold
  * 3- of all the linear manifolds sampled select the one whose associated distance histogram shows the best separation between to modes.
  */
-clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestZeroManifoldSeparation(
+std::pair<clustering::lmclus::Separation, arma::rowvec>
+    clustering::lmclus::LMCLUS::findBestZeroManifoldSeparation(
     const arma::mat &data, const Parameters &params, const Separation &sep) {
 
     int DataSize = data.n_rows;
     int FullSpcDim = data.n_cols;
+    Separation best_sep;
+    arma::rowvec best_zd_origin = arma::zeros(FullSpcDim);
 
     LOG_INFO(log)<<"data size="<<DataSize<<"   linear manifold dim=0"
         <<"   space dim="<<FullSpcDim<<"   searching for separation ...";
     LOG_INFO(log)<<"------------------------------------------------------------";
 
     // determine number of samples of "LMDim+1" points
-    int Q = LMCLUS::sampleQuantity( 1, FullSpcDim, DataSize, params );
+    int i, Q = LMCLUS::sampleQuantity( 1, FullSpcDim, DataSize, params );
     LOG_TRACE(log) << "Collect " << Q << " sample(s)";
 
-    unsigned int point_idx = rand() % data.n_rows;
+    for (i = 0; i < Q; ++i) {
+        unsigned int point_idx = rand() % data.n_rows;
 
-    // Build histogram for 0-dim manifold search
-    arma::vec projection = arma::zeros<arma::vec>(data.n_rows);
-    arma::vec distances = arma::zeros<arma::vec>(data.n_rows);
-    arma::mat B_T = sep.get_projection();
-    arma::rowvec origin = sep.get_origin();        
-    for (size_t j=0; j < data.n_rows; j++) {
-        projection[j] = dot(B_T.row(0), (data.row(j) - origin));
-    }
-    projection -= projection(point_idx);
-    double RHmin=projection.min();
-    double RHmax=projection.max(); 
+        // Build histogram for 0-dim manifold search
+        arma::vec distances = arma::zeros<arma::vec>(data.n_rows);
+        arma::mat B_T = sep.get_projection();
+        arma::rowvec origin = sep.get_origin();
+        double zd_origin = dot(B_T.row(0), (data.row(point_idx) - origin));
+        for (size_t j=0; j < data.n_rows; j++) {
+            distances[j] = abs(zd_origin - dot(B_T.row(0), (data.row(j) - origin)));
+        }
+        double RHmin=distances.min();
+        double RHmax=distances.max(); 
+        // generate a distances histogram
+        arma::uvec hist = arma::hist(distances, 
+            params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : 
+                static_cast<int>(distances.n_elem * params.MAX_BIN_PORTION));
 
-    // generate a distances histogram
-    arma::uvec hist = arma::hist(projection, 
-        params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : 
-            static_cast<int>(projection.n_elem * params.MAX_BIN_PORTION));
+        auto filledBins = find(hist > 0).eval();
+        LOG_TRACE(log) << "Non-empty bins: \n" << filledBins.n_elem;
+        if ( filledBins.n_elem < 2)
+            continue;
 
-    Separation best_sep;
-    auto filledBins = find(hist > 0).eval();
-    LOG_TRACE(log) << "Non-empty bins: \n" << filledBins.n_elem;
-    if ( filledBins.n_elem > 1) {    
         // Threshold histogram and determine goodness of separation
-        arma::vec histNorm = arma::conv_to< arma::vec >::from(hist) / static_cast<double>(distances.n_elem);
+        arma::vec histNorm = arma::conv_to<arma::vec>::from(hist) / static_cast<double>(distances.n_elem);
         LOG_TRACE(log) << "Create histogram: \n" << histNorm.t();
         
         Kittler K;
         K.FindThreshold(histNorm, RHmin, RHmax);
-        LOG_TRACE(log) << "Found threshold: " << K.GetDiscrim()*K.GetDepth();
+        LOG_DEBUG(log) << "Found threshold: " << K.GetDiscrim()*K.GetDepth();
 
         // store separation info
-        Separation new_sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), 
+        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), 
                 origin, B_T, hist, K.GetMinIndex());
-        best_sep = new_sep;
-        if (best_sep.get_criteria()==0)
-            LOG_DEBUG(log) << "no good histograms to separate data !!!";
-        else {
-            LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="
-                <<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();
+        //#pragma omp critical(find_separation)
+        if ((K.GetDiscrim()*K.GetDepth() ) > best_sep.get_criteria()) {
+            LOG_TRACE(log) << "Found orthogonal basis:\n" << sep.get_projection();
+            best_sep=sep;
+            best_zd_origin = data.row(point_idx);
         }
     }
-    return best_sep;
+    
+    if (best_sep.get_criteria() == 0)
+        LOG_DEBUG(log) << "no good histograms to separate data !!!";
+    else
+        LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="
+            <<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();
+
+    return std::make_pair(best_sep, best_zd_origin);
 }
 
 
@@ -487,10 +496,15 @@ bool clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data,
     while (true) {
         // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
         Separation sep;
-        if (lm_dim == 0)
-            sep = findBestZeroManifoldSeparation(data.rows(points_index), para, best_sep);
-        else
+        arma::rowvec zd_origin;
+        if (lm_dim == 0) {
+            // For zero dimensional manifold search is simplified
+            auto zd_sep = findBestZeroManifoldSeparation(data.rows(points_index), para, best_sep);
+            sep = std::get<0>(zd_sep);
+            zd_origin = std::get<1>(zd_sep);
+        } else {
             sep = findBestSeparation(data.rows(points_index), lm_dim, para);
+        }
         LOG_INFO(log) << "BEST_BOUND: "<< sep.get_criteria() << "(" << para.BEST_BOUND << ")";
         if (sep.get_criteria() < para.BEST_BOUND ) break;
 
@@ -506,9 +520,15 @@ bool clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data,
         LOG_TRACE(log) << "Origin: \n" << origin;
 
         unsigned int i, idx;
+        double d_n;
         for(i=0; i < points_index.n_rows; i++) {
             idx = points_index(i);
-            double d_n = distanceToManifold(data.row(idx) - origin, Projection);
+            if (lm_dim == 0)
+                d_n = abs(zd_origin - 
+                    dot(Projection.row(0), (data.row(idx) - origin))).eval()(0);
+            else
+                d_n = distanceToManifold(data.row(idx) - origin, Projection);
+            
             if (d_n < threshold)    // point i has distances less than the threshold value
                 best_points.push_back(idx);  // add to best points
             else
@@ -527,7 +547,7 @@ bool clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data,
     }
 
     LOG_INFO(log) << "# of points = " << points_index.n_rows;
-    if(lm_dim<para.MAX_DIM && !Noise)
+    if(lm_dim > 0 && lm_dim < para.MAX_DIM && !Noise)
         LOG_INFO(log)<<"no separation, increasing dim ...";
     else
         LOG_INFO(log)<<"no separation ...";

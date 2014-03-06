@@ -40,7 +40,7 @@
 
 #include "Kittler.hpp"
 
-#define CPPLOG_FILTER_LEVEL 1
+#define CPPLOG_FILTER_LEVEL 2
 #include "cpplog.hpp"
 
 namespace clustering {
@@ -101,14 +101,14 @@ public:
 	virtual ~Separation () {};
 
 private:
-	arma::rowvec origin;                  // origin of subspace, used to find points that will be separated from data
-	arma::mat projection;                 // subspace projection matrix, used to find points that will be separated from data
-	double sep_width;                     // separation width
-	double sep_depth;                     // separation depth
-	double threshold;                     // histogram's threshold
-	unsigned int global_min;              // histogram's global minimum
-	arma::uvec histogram;                 // the histogram kittler's algorithm is applied on
-	double criteria;                      // goodness of separation (width*depth)
+	arma::rowvec origin;      // origin of subspace, used to find points that will be separated from data
+	arma::mat projection;     // subspace projection matrix, used to find points that will be separated from data
+	double sep_width;         // separation width
+	double sep_depth;         // separation depth
+	double threshold;         // histogram's threshold
+	unsigned int global_min;  // histogram's global minimum
+	arma::uvec histogram;     // the histogram kittler's algorithm is applied on
+	double criteria;          // goodness of separation (width*depth)
 
 };
 
@@ -171,9 +171,9 @@ private:
     // spearation detection functions
     Separation findBestSeparation(const arma::mat &data, 
         const int SubSpaceDim, const Parameters &para);
-    Separation findBestZeroManifoldSeparation(const arma::mat &data, 
-        const Parameters &para, const Separation &sep);
-    //std::pair<arma::uvec, arma::uvec> findBestPoints(const arma::mat &data, const Separation &best_sep);
+    std::pair<Separation, arma::rowvec> findBestZeroManifoldSeparation(
+        const arma::mat &data, const Parameters &para, 
+        const Separation &sep);
     
     arma::mat findBestPoints(const arma::mat &data, const Separation &sep, arma::mat &nonClusterPoints);
     arma::vec determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, const Parameters &para);
