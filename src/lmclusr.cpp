@@ -56,7 +56,7 @@ SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
     nH = AS_NUMERIC(nH);
     arma::vec hist(REAL(nH), n, false);
     double RHmin = REAL(minX)[0];
-    double RHmax = REAL(maxX)[0];
+    double RHmax = REAL(maxX)[0];    
     Kittler K;
     bool res = K.FindThreshold(hist, RHmin, RHmax);
     if (!res)
@@ -158,7 +158,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     Rprintf("Clusters found: %d\n", labels.size());
 
     SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, 
-        Rbases, Rorigins, Rhistograms, Rhmins;
+        Rbases, Rorigins, Rhistograms, Rhmins, Rdistances;
 
      // Thresholds
     PROTECT(Rthresholds = allocVector(REALSXP, separations.size())); nprotect++;
@@ -215,16 +215,29 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
         SET_VECTOR_ELT(Rhistograms, i, hist);
     }
 
+    // Histogram distances
+    PROTECT(Rdistances = allocVector(VECSXP, separations.size())); nprotect++;
+#ifdef DEBUG
+    for (i = 0; i < separations.size(); ++i) {
+        arma::vec distances = separations[i].get_distances();
+        SEXP dist;
+        PROTECT(dist = allocVector(REALSXP, distances.n_elem)); nprotect++;
+        for (j = 0; j < distances.n_elem; ++j)
+            REAL(dist)[j] = distances[j];
+        SET_VECTOR_ELT(Rdistances, i, dist);
+    }
+#endif
+
     // Histogram minimum
     PROTECT(Rhmins = allocVector(INTSXP, separations.size())); nprotect++;
     for (i = 0; i < separations.size(); ++i)
       INTEGER(Rhmins)[i] = separations[i].get_global_min();
 
     // Result list
-    PROTECT(Return_lst = allocVector(VECSXP, 7)); nprotect++;
+    PROTECT(Return_lst = allocVector(VECSXP, 8)); nprotect++;
 
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(7)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(8)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("thresholds"));
     SET_STRING_ELT(Rnames, 1, mkChar("cluster_dimensions"));
     SET_STRING_ELT(Rnames, 2, mkChar("clusters"));
@@ -232,6 +245,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_STRING_ELT(Rnames, 4, mkChar("origins"));
     SET_STRING_ELT(Rnames, 5, mkChar("histograms"));
     SET_STRING_ELT(Rnames, 6, mkChar("global_mins"));
+    SET_STRING_ELT(Rnames, 7, mkChar("distances"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
@@ -242,6 +256,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_VECTOR_ELT(Return_lst, 4, Rorigins);
     SET_VECTOR_ELT(Return_lst, 5, Rhistograms);
     SET_VECTOR_ELT(Return_lst, 6, Rhmins);
+    SET_VECTOR_ELT(Return_lst, 7, Rdistances);
 
     UNPROTECT(nprotect);
     return Return_lst;
