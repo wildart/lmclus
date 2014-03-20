@@ -66,7 +66,7 @@ public:
 	double get_threshold() const {
 		return threshold;
 	}
-	arma::uvec get_histogram() const {
+	arma::vec get_histogram() const {
 		return histogram;
 	}
 	arma::mat get_projection() const {
@@ -81,21 +81,42 @@ public:
 	void reset(){
 		criteria = -1;
 	}
+#ifdef DEBUG
+	arma::vec get_distances() const {
+		return distances;
+	}
+#endif
 
 	Separation(double w, double d, double thres, const arma::rowvec &org,
-	    const arma::mat &p, const arma::uvec &h, unsigned int gm):
+	    const arma::mat &p, const arma::vec &h, unsigned int gm
+#ifdef DEBUG
+	    , const arma::vec &dist
+#endif
+	    ):
 	    origin(org), projection(p), sep_width(w), sep_depth(d), 
-	    threshold(thres), global_min(gm), histogram(h) {
+	    threshold(thres), global_min(gm), histogram(h)
+#ifdef DEBUG
+	    , distances(dist)
+#endif
+	{
         criteria=sep_width*sep_depth;
 	}
 
 	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
-	    threshold(0), global_min(0), criteria(-1){}
+	    threshold(0), global_min(0), criteria(-1)
+    {
+#ifdef DEBUG
+	    distances = arma::zeros(0);
+#endif
+    }
 	
 	Separation (int dim): sep_width(0.), sep_depth(0.), 
 	    threshold(0.), global_min(0.), histogram(1), criteria(-1) {
 	    origin = arma::zeros(dim);
 	    projection = arma::zeros(1,dim);
+#ifdef DEBUG
+	    distances = arma::zeros(0);
+#endif
 	}
 		
 	virtual ~Separation () {};
@@ -107,9 +128,11 @@ private:
 	double sep_depth;         // separation depth
 	double threshold;         // histogram's threshold
 	unsigned int global_min;  // histogram's global minimum
-	arma::uvec histogram;     // the histogram kittler's algorithm is applied on
+	arma::vec histogram;     // the histogram kittler's algorithm is applied on
 	double criteria;          // goodness of separation (width*depth)
-
+#ifdef DEBUG
+    arma::vec distances;   // distances for thresholding
+#endif
 };
 
 /* Parameters
