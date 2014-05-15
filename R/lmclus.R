@@ -16,6 +16,7 @@ setClass(
         
         hisSampling = "logical",
         hisConstSize = "numeric", 
+        hisThreshold = "numeric", 
         maxBinPortion = "numeric",
         
         sampleHeuristic = "numeric", 
@@ -34,6 +35,7 @@ setClass(
 
         hisSampling = FALSE,
         hisConstSize = 0,
+        hisThreshold = 15,
         maxBinPortion = 0.1,
         
         sampleHeuristic = 3, 
@@ -58,6 +60,7 @@ function (object)
     cat("Sample points for distance histogram:" , object@hisSampling , "\n")
     cat("Histogram bins:" , object@hisConstSize , "\n")
     cat("Maximum number of points in a histogram's bin:" , object@maxBinPortion , "\n")
+    cat("Histogram bootstrapping threshold:" , object@hisThreshold , "\n")
     
     cat("Sampling heuristic:" , object@sampleHeuristic , "\n")
     cat("Sampling factor:" , object@sampleFactor , "\n")
@@ -68,10 +71,10 @@ function (object)
 })
 
 lmclusPure <- function(X, maxDim, numOfClus, noiseSize, bestBound, errorBound, maxBinPortion,
-                       hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog) 
+                       hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog, hisThr) 
 {
     .Call("lmclus", X, maxDim, numOfClus, noiseSize, bestBound, errorBound, maxBinPortion, 
-          hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog,
+          hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog, hisThr,
           package = "lmclus")
 }
 
@@ -106,9 +109,11 @@ lmclus.default <- function(X, params, ...)
     sampleFactor <- as.double(params@sampleFactor)
     randomSeed <- as.integer(params@randomSeed)
     showLog <- as.integer(params@showLog)
+    hisThreshold <- as.integer(params@hisThreshold)
     
-    res <- lmclusPure(X, maxDim, numOfClus, noiseSize, bestBound, errorBound, maxBinPortion,
-                      hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog)
+    res <- lmclusPure(X, maxDim, numOfClus, noiseSize, bestBound, errorBound, 
+                    maxBinPortion, hisSampling, hisConstSize, sampleHeuristic, 
+                    sampleFactor, randomSeed, showLog, hisThreshold)
     
     res$call <- match.call()
     
@@ -138,7 +143,7 @@ lmclus.kittler <- function(v, bins)
 # Calculate distance to cluster
 lmclus.distToManifold <- function(p, B, origin)
 {
-    # Translate to origin if avalible
+    # Translate to origin if available
     if (missing(origin))
         p <- as.vector(p)
     else
@@ -153,9 +158,9 @@ lmclus.distToManifold <- function(p, B, origin)
 lmclus.get_cluster <- function(results, id){
     clust = list(id, results$cluster_dimensions[id], results$origins[[id]], 
                  results$bases[[id]], results$clusters[[id]], results$thresholds[id], 
-                 results$histograms[[id]], results$global_mins[id])
+                 results$histograms[[id]], results$global_mins[id], results$distances[[id]])
     names(clust) = c("id", "dim", "origin", "basis", "labels", 
-                        "threshold", "histogram", "global_mins")
+                        "threshold", "histogram", "global_mins", "distances")
     return(clust)
     print(clust)
 }

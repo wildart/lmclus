@@ -31,7 +31,7 @@
   * *               email: adiky@gc.cuny.edu
   * *               02/18/2013
   * *
-  * * Copyright 2005-2013 Pattern Recognition Laboratory, The City University of New York
+  * * Copyright 2005-2014 Pattern Recognition Laboratory, The City University of New York
   * **********************************************************************************/
 
 #include <iostream>
@@ -81,42 +81,31 @@ public:
 	void reset(){
 		criteria = -1;
 	}
-#ifdef DEBUG
 	arma::vec get_distances() const {
 		return distances;
 	}
-#endif
 
 	Separation(double w, double d, double thres, const arma::rowvec &org,
-	    const arma::mat &p, const arma::vec &h, unsigned int gm
-#ifdef DEBUG
-	    , const arma::vec &dist
-#endif
+	    const arma::mat &p, const arma::vec &h, unsigned int gm, const arma::vec &dist
 	    ):
 	    origin(org), projection(p), sep_width(w), sep_depth(d), 
-	    threshold(thres), global_min(gm), histogram(h)
-#ifdef DEBUG
-	    , distances(dist)
-#endif
+	    threshold(thres), global_min(gm), histogram(h), distances(dist)
 	{
-        criteria=sep_width*sep_depth;
+      criteria=sep_width*sep_depth;
 	}
 
 	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
 	    threshold(0), global_min(0), criteria(-1)
-    {
-#ifdef DEBUG
+  {
 	    distances = arma::zeros(0);
-#endif
-    }
+  }
 	
 	Separation (int dim): sep_width(0.), sep_depth(0.), 
-	    threshold(0.), global_min(0.), histogram(1), criteria(-1) {
+	    threshold(0.), global_min(0.), histogram(1), criteria(-1) 
+  {
 	    origin = arma::zeros(dim);
 	    projection = arma::zeros(1,dim);
-#ifdef DEBUG
 	    distances = arma::zeros(0);
-#endif
 	}
 		
 	virtual ~Separation () {};
@@ -130,9 +119,7 @@ private:
 	unsigned int global_min;  // histogram's global minimum
 	arma::vec histogram;     // the histogram kittler's algorithm is applied on
 	double criteria;          // goodness of separation (width*depth)
-#ifdef DEBUG
-    arma::vec distances;   // distances for thresholding
-#endif
+  arma::vec distances;   // distances for thresholding
 };
 
 /* Parameters
@@ -143,9 +130,9 @@ struct Parameters
 {
     int MAX_DIM;
     int NUM_OF_CLUS;
-    unsigned int LABEL_COL;
+    size_t LABEL_COL;
     int CONST_SIZE_HIS;
-    unsigned int NOISE_SIZE;
+    size_t NOISE_SIZE;
     double BEST_BOUND;
     double ERROR_BOUND; 
     double MAX_BIN_PORTION;
@@ -155,6 +142,7 @@ struct Parameters
     double SAMPLING_FACTOR;
     bool HIS_SAMPLING;
     bool SAVE_RESULT;
+    size_t HIS_THR;
     
     friend std::ostream & operator<<(std::ostream &o, Parameters &p)
     {
@@ -170,6 +158,7 @@ struct Parameters
         o<<"SAMPLING_HEURISTIC="<<p.SAMPLING_HEURISTIC<<std::endl;
         o<<"SAMPLING_FACTOR="<<p.SAMPLING_FACTOR<<std::endl;
         o<<"HIS_SAMPLING="<<p.HIS_SAMPLING<<std::endl;
+        o<<"HIS_SAMPLING="<<p.HIS_THR<<std::endl;        
         o<<"SAVE_RESULT="<<p.SAVE_RESULT<<std::endl;
 
         return o;
@@ -194,7 +183,7 @@ private:
     // spearation detection functions
     Separation findBestSeparation(const arma::mat &data, 
         const int SubSpaceDim, const Parameters &para);
-    std::pair<Separation, arma::rowvec> findBestZeroManifoldSeparation(
+    Separation findBestZeroManifoldSeparation(
         const arma::mat &data, const Parameters &para, 
         const Separation &sep);
     
@@ -203,7 +192,7 @@ private:
     
     unsigned int randromNumber();
     
-    cpplog::OstreamLogger *log;
+    cpplog::BaseLogger *log;
     bool logCreated;
     std::mt19937 engine;
     std::uniform_int_distribution<unsigned int> dist;
@@ -215,7 +204,7 @@ public:
         log = new cpplog::StdErrLogger();
     }    
     
-    LMCLUS(cpplog::OstreamLogger *mlog) : logCreated(false), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
+    LMCLUS(cpplog::BaseLogger *mlog) : logCreated(false), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
     {
         log = mlog;
     }    
@@ -232,7 +221,7 @@ public:
     static double distanceToManifold(const arma::rowvec &point, const arma::mat &B_T);
     static double projectTo1D(const arma::rowvec &point, const arma::mat &B_T);
 
-    bool find_manifold(const arma::mat &data, const Parameters &para,
+    bool findManifold(const arma::mat &data, const Parameters &para,
                  arma::uvec &points_index,
                  std::vector<unsigned int> &nonClusterPoints,
                  Separation &separations,
@@ -243,6 +232,10 @@ public:
                  std::vector<Separation> &separations,
                  callback_t progress = nullptr);
 };
+
+
+// Static functions
+arma::vec histBootstrapping(arma::vec distances, size_t bins);
 
 } // lmclus namespace
 } // clustering namespace

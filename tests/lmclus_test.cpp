@@ -98,6 +98,7 @@ int main ( int argc, char *argv[] )
     params.SAMPLING_FACTOR = ini.GetDoubleValue(SECTION, "SAMPLING_FACTOR", 0.003);
     params.HIS_SAMPLING = ini.GetBoolValue(SECTION, "HIS_SAMPLING", false);
     params.SAVE_RESULT = ini.GetBoolValue(SECTION, "SAVE_RESULT", false);
+    params.HIS_THR = static_cast<unsigned int>(ini.GetLongValue(SECTION, "HIS_THR", 15));
     
     // Load dataset
     arma::mat data;

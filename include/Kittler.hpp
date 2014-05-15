@@ -27,7 +27,7 @@
 *
 * REVISIONS:
 *
-* Copyright 2002 Pattern Recognition Laboratory, The City University of New York
+* Copyright 2002-2014 Pattern Recognition Laboratory, The City University of New York
 *********************************************************************************/
 #ifndef KITTLER_H
 #define KITTLER_H

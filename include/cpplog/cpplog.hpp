@@ -534,6 +534,7 @@ namespace cpplog
         };
     };
 
+
     // Generic class - logs to a given std::ostream.
     class OstreamLogger : public BaseLogger
     {
@@ -585,6 +586,18 @@ namespace cpplog
         {
             m_stream.str("");
             m_stream.clear();
+        }
+    };
+
+    // Simple implementation - no logging
+    class NullLogger : public BaseLogger
+    {    
+    public:
+        NullLogger(){ }
+
+        bool sendLogMessage(LogData* logData)
+        {            
+            return true;
         }
     };
 

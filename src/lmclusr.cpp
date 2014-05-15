@@ -106,13 +106,12 @@ SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
 
 SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound,
     SEXP errorBound, SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize,
-    SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog) {
+    SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog, SEXP hisThr) {
 
     Rprintf("Linear manifold clustering...\n");
     int n, m, show_log, nprotect = 0;
     size_t i, j, k;
 
-    cpplog::StringLogger log;
     try {
     // Set parameters
     clustering::lmclus::Parameters params;
@@ -126,11 +125,17 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     params.CONST_SIZE_HIS = INTEGER(hisConstSize)[0];
     params.SAMPLING_HEURISTIC = INTEGER(sampleHeuristic)[0];
     params.SAMPLING_FACTOR = REAL(sampleFactor)[0];
-    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);
-
-    LOG_INFO(log) << params;
+    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);    
+    params.HIS_THR = INTEGER(hisThr)[0];    
 
     show_log = INTEGER(showLog)[0];
+    cpplog::BaseLogger *log;
+    if (!show_log)
+        log = new cpplog::NullLogger();
+    else
+        log = new cpplog::FileLogger("/tmp/lmclus.log");
+
+    LOG_INFO(log) << params;
 
     // get dataset
     SEXP Rdim = getAttrib(Xs, R_DimSymbol);
@@ -150,10 +155,8 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     std::vector<int> clusterDims;
     std::vector<clustering::lmclus::Separation> separations;
 
-    clustering::lmclus::LMCLUS lmclus(&log);
+    clustering::lmclus::LMCLUS lmclus(log);
     lmclus.cluster(data, params, labels, clusterDims, separations, output_callback);
-    if (show_log)
-        Rprintf("%s", log.getString().c_str());
 
     Rprintf("Clusters found: %d\n", labels.size());
 
@@ -170,9 +173,10 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     for (i = 0; i < clusterDims.size(); ++i)
       INTEGER(RclusterDims)[i] = clusterDims[i];
 
-    // Labels
+    // Labels    
     PROTECT(Rlabels = allocVector(VECSXP, labels.size())); nprotect++;
     for (i = 0; i < labels.size(); ++i) {
+        labels[i] += 1; // adjust indexes
         SEXP lbls;
         PROTECT(lbls = allocVector(INTSXP, labels[i].n_elem)); nprotect++;
         for (j = 0; j < labels[i].n_elem; ++j)
@@ -207,17 +211,16 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     // Distance histogram
     PROTECT(Rhistograms = allocVector(VECSXP, separations.size())); nprotect++;
     for (i = 0; i < separations.size(); ++i) {
-        auto histogram = separations[i].get_histogram();
+        arma::vec histogram = separations[i].get_histogram();
         SEXP hist;
-        PROTECT(hist = allocVector(INTSXP, histogram.n_elem)); nprotect++;
+        PROTECT(hist = allocVector(REALSXP, histogram.n_elem)); nprotect++;
         for (j = 0; j < histogram.n_elem; ++j)
-            INTEGER(hist)[j] = histogram[j];
+            REAL(hist)[j] = histogram[j];
         SET_VECTOR_ELT(Rhistograms, i, hist);
     }
 
     // Histogram distances
     PROTECT(Rdistances = allocVector(VECSXP, separations.size())); nprotect++;
-#ifdef DEBUG
     for (i = 0; i < separations.size(); ++i) {
         arma::vec distances = separations[i].get_distances();
         SEXP dist;
@@ -226,7 +229,6 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
             REAL(dist)[j] = distances[j];
         SET_VECTOR_ELT(Rdistances, i, dist);
     }
-#endif
 
     // Histogram minimum
     PROTECT(Rhmins = allocVector(INTSXP, separations.size())); nprotect++;
@@ -259,9 +261,12 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_VECTOR_ELT(Return_lst, 7, Rdistances);
 
     UNPROTECT(nprotect);
+
+    // Clear log
+    delete log;
+
     return Return_lst;
-    } catch(...) {
-        Rprintf("Log:\n%s", log.getString().c_str());
+    } catch(...) {        
         ::Rf_error("c++ exception (unknown reason)");
     }
     return R_NilValue;
