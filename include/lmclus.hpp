@@ -31,12 +31,14 @@
   * *               email: adiky@gc.cuny.edu
   * *               02/18/2013
   * *
-  * * Copyright 2005-2013 Pattern Recognition Laboratory, The City University of New York
+  * * Copyright 2005-2014 Pattern Recognition Laboratory, The City University of New York
   * **********************************************************************************/
 
 #include <iostream>
 #include <vector>
 #include <armadillo>
+
+#include "Kittler.hpp"
 
 #define CPPLOG_FILTER_LEVEL 2
 #include "cpplog.hpp"
@@ -61,42 +63,63 @@ public:
 	double get_criteria() const {
 		return criteria;
 	}
-	double get_threshold () const {
+	double get_threshold() const {
 		return threshold;
 	}
-	arma::uvec get_histo() const {
-		return histo;
+	arma::vec get_histogram() const {
+		return histogram;
 	}
-	arma::mat get_projection () const {
+	arma::mat get_projection() const {
 		return projection;
 	}
 	arma::rowvec get_origin() const {
 		return origin;
 	}
+	unsigned int get_global_min() const {
+		return global_min;
+	}
 	void reset(){
 		criteria = -1;
 	}
-	
-	Separation(double w, double d, double thres, const arma::rowvec &org ,const arma::mat &p, arma::uvec &h):
-		origin(org),projection(p),sep_width(w),sep_depth(d),threshold(thres),histo(h)
-	{
-		criteria=sep_width*sep_depth;
+	arma::vec get_distances() const {
+		return distances;
 	}
 
-	Separation ():
-		origin(1),projection(1,1),sep_width(0),sep_depth(0),threshold(0),criteria(-1){}
+	Separation(double w, double d, double thres, const arma::rowvec &org,
+	    const arma::mat &p, const arma::vec &h, unsigned int gm, const arma::vec &dist
+	    ):
+	    origin(org), projection(p), sep_width(w), sep_depth(d), 
+	    threshold(thres), global_min(gm), histogram(h), distances(dist)
+	{
+      criteria=sep_width*sep_depth;
+	}
+
+	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
+	    threshold(0), global_min(0), criteria(-1)
+  {
+	    distances = arma::zeros(0);
+  }
+	
+	Separation (int dim): sep_width(0.), sep_depth(0.), 
+	    threshold(0.), global_min(0.), histogram(1), criteria(-1) 
+  {
+	    origin = arma::zeros(dim);
+	    projection = arma::zeros(1,dim);
+	    distances = arma::zeros(0);
+	}
 		
 	virtual ~Separation () {};
-	
-private:
-	arma::rowvec origin;                  // origin of subspace, used to find points that will be separated from data
-	arma::mat projection;                 // subspace projection matrix, used to find points that will be separated from data
-	double sep_width;                     // separation width
-	double sep_depth;                     // separation depth
-	double threshold;                     // histogram's threshold
-	arma::uvec histo;                      // the histogram kittler's algorithm is applied on		
-	double criteria;                      // goodness of separation (width*depth)
 
+private:
+	arma::rowvec origin;      // origin of subspace, used to find points that will be separated from data
+	arma::mat projection;     // subspace projection matrix, used to find points that will be separated from data
+	double sep_width;         // separation width
+	double sep_depth;         // separation depth
+	double threshold;         // histogram's threshold
+	unsigned int global_min;  // histogram's global minimum
+	arma::vec histogram;     // the histogram kittler's algorithm is applied on
+	double criteria;          // goodness of separation (width*depth)
+  arma::vec distances;   // distances for thresholding
 };
 
 /* Parameters
@@ -107,9 +130,9 @@ struct Parameters
 {
     int MAX_DIM;
     int NUM_OF_CLUS;
-    unsigned int LABEL_COL;
+    size_t LABEL_COL;
     int CONST_SIZE_HIS;
-    unsigned int NOISE_SIZE;
+    size_t NOISE_SIZE;
     double BEST_BOUND;
     double ERROR_BOUND; 
     double MAX_BIN_PORTION;
@@ -119,6 +142,7 @@ struct Parameters
     double SAMPLING_FACTOR;
     bool HIS_SAMPLING;
     bool SAVE_RESULT;
+    size_t HIS_THR;
     
     friend std::ostream & operator<<(std::ostream &o, Parameters &p)
     {
@@ -134,6 +158,7 @@ struct Parameters
         o<<"SAMPLING_HEURISTIC="<<p.SAMPLING_HEURISTIC<<std::endl;
         o<<"SAMPLING_FACTOR="<<p.SAMPLING_FACTOR<<std::endl;
         o<<"HIS_SAMPLING="<<p.HIS_SAMPLING<<std::endl;
+        o<<"HIS_SAMPLING="<<p.HIS_THR<<std::endl;        
         o<<"SAVE_RESULT="<<p.SAVE_RESULT<<std::endl;
 
         return o;
@@ -154,20 +179,20 @@ private:
     arma::uvec samplePoints(const arma::mat &data, const int lmDim);
     arma::uvec sample(const int n, const int k);
 
-    // basis generation functions
-    arma::mat formBasis(const arma::mat &points, const arma::rowvec& origin);
-    arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
         
     // spearation detection functions
-    Separation findBestSeparation(const arma::mat &data, const int SubSpaceDim, const Parameters &para);
-    //std::pair<arma::uvec, arma::uvec> findBestPoints(const arma::mat &data, const Separation &best_sep);
+    Separation findBestSeparation(const arma::mat &data, 
+        const int SubSpaceDim, const Parameters &para);
+    Separation findBestZeroManifoldSeparation(
+        const arma::mat &data, const Parameters &para, 
+        const Separation &sep);
     
     arma::mat findBestPoints(const arma::mat &data, const Separation &sep, arma::mat &nonClusterPoints);
     arma::vec determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, const Parameters &para);
     
     unsigned int randromNumber();
     
-    cpplog::OstreamLogger *log;
+    cpplog::BaseLogger *log;
     bool logCreated;
     std::mt19937 engine;
     std::uniform_int_distribution<unsigned int> dist;
@@ -179,7 +204,7 @@ public:
         log = new cpplog::StdErrLogger();
     }    
     
-    LMCLUS(cpplog::OstreamLogger *mlog) : logCreated(false), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
+    LMCLUS(cpplog::BaseLogger *mlog) : logCreated(false), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
     {
         log = mlog;
     }    
@@ -189,16 +214,28 @@ public:
         if (logCreated)
             delete log;
     }
-    
-    void find_manifold(const arma::mat &data, const Parameters &para, 
-                 arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
-                 std::vector<Separation> &separations, bool &Noise, int &SepDim);
-    
-    void cluster(const arma::mat &data, const Parameters &para, 
-                 std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
-                 std::vector<arma::mat> &bases, std::vector<int> &clusterDims,
-                 std::vector<arma::vec> &origins, callback_t progress = nullptr);
+
+    // basis generation functions
+    arma::mat formBasis(const arma::mat &points, arma::rowvec& origin);
+    arma::mat gramSchmidtOrthogonalization(const arma::mat &M);
+    static double distanceToManifold(const arma::rowvec &point, const arma::mat &B_T);
+    static double projectTo1D(const arma::rowvec &point, const arma::mat &B_T);
+
+    bool findManifold(const arma::mat &data, const Parameters &para,
+                 arma::uvec &points_index,
+                 std::vector<unsigned int> &nonClusterPoints,
+                 Separation &separations,
+                 bool &Noise, int SepDim);
+
+    void cluster(const arma::mat &data, const Parameters &para,
+                 std::vector<arma::uvec> &labels, std::vector<int> &clusterDims,
+                 std::vector<Separation> &separations,
+                 callback_t progress = nullptr);
 };
+
+
+// Static functions
+arma::vec histBootstrapping(arma::vec distances, size_t bins);
 
 } // lmclus namespace
 } // clustering namespace

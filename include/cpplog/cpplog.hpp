@@ -6,12 +6,14 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <strstream>
 #include <fstream>
 #include <sstream>
 #include <cstring>
 #include <ctime>
 #include <vector>
+#include <cstdlib>
+#include <streambuf>
+#include <ostream>
 
 // The following #define's will change the behaviour of this library.
 //      #define CPPLOG_FILTER_LEVEL     <level>
@@ -253,17 +255,74 @@ namespace cpplog
             VoidStreamClass() { }
             void operator&(std::ostream&) { }
         };
-    };
+
+        // fixed_streambuf is a minimal implementation around std::basic_streambuf
+        // with a fixed size backing buffer. It implements additional functionality
+        // needed by cpplog and exposes the backing buffer in a safe way via c_str().
+        // This makes it possible to avoid extra copying.
+        class fixed_streambuf : public std::basic_streambuf<char, std::char_traits<char> >
+        {
+        private:
+            // Constant.
+            static const size_t k_logBufferCapacity = 20000;
+            // Leave room for terminating null character in case buffer fills up.
+            char m_buffer[k_logBufferCapacity+1];
+
+        public:
+            fixed_streambuf()
+            {
+                // Use allocated buffer as backing store.
+                setp(m_buffer, m_buffer + k_logBufferCapacity);
+                // Insert terminator at buffer end.
+                m_buffer[k_logBufferCapacity] = '\0';
+            }
+
+            std::streamsize length()   const { return pptr() - pbase();       }
+            std::streamsize capacity() const { return k_logBufferCapacity;    }
+            bool empty()               const { return length() == 0;          }
+            bool full()                const { return length() == capacity(); }
+
+            // Unput one character.
+            int_type sunputc()
+            {
+                if( (!pptr()) || (pptr() == pbase()) )
+                    return pbackfail();
+
+                pbump(-1);
+
+                // This is safe because *epptr() always is '\0' and inside
+                // the backing buffer.
+                return traits_type::to_int_type(*(pptr()+1));
+            }
+
+            // Peek at last inserted character.
+            int peek() const
+            {
+                if( (!pptr()) || (pptr() == pbase()) )
+                    return std::char_traits<char>::eof();
+
+                return static_cast<int>(*(pptr()-1));
+            }
+
+            const char* c_str() const
+            {
+                // Add terminating null character.
+                // This is safe even if the buffer is full to its capacity since
+                // epptr() is inside the backing buffer.
+                *pptr() = '\0';
+                return pbase();
+            }
+        };
+    }
 
     // Logger data.  This is sent to a logger when a LogMessage is Flush()'ed, or
     // when the destructor is called.
     struct LogData
     {
-        // Constant.
-        static const size_t k_logBufferSize = 20000;
 
-        // Our stream to log data to.
-        std::ostrstream stream;
+        // Our streambuf & stream to log data to.
+        helpers::fixed_streambuf streamBuffer;
+        std::ostream stream;
 
         // Captured data.
         unsigned int level;
@@ -279,12 +338,10 @@ namespace cpplog
         helpers::thread_id_t  threadId;
 #endif
 
-        // Buffer for our text.
-        char buffer[k_logBufferSize];
 
         // Constructor that initializes our stream.
         LogData(loglevel_t logLevel)
-            : stream(buffer, k_logBufferSize), level(logLevel)
+            : streamBuffer(), stream(&streamBuffer), level(logLevel)
 #ifdef CPPLOG_SYSTEM_IDS
               , processId(0), threadId(0)
 #endif
@@ -312,10 +369,13 @@ namespace cpplog
     {
     private:
         BaseLogger*     m_logger;
-        LogData*        m_logData;
         bool            m_flushed;
         bool            m_deleteMessage;
 
+    protected:
+        LogData*        m_logData;
+
+    private:
         // Flag for if a fatal message has been logged already.
         // This prevents us from calling exit(), which calls something,
         // which then logs a fatal message, which cause an infinite loop.
@@ -331,16 +391,16 @@ namespace cpplog
         }
 
     public:
-        LogMessage(const char* file, unsigned int line, loglevel_t logLevel, BaseLogger* outputLogger)
+        LogMessage(const char* file, unsigned int line, loglevel_t logLevel, BaseLogger* outputLogger, bool useDefaultLogFormat=true)
             : m_logger(outputLogger)
         {
-            Init(file, line, logLevel);
+            Init(file, line, logLevel, useDefaultLogFormat);
         }
 
-        LogMessage(const char* file, unsigned int line, loglevel_t logLevel, BaseLogger& outputLogger)
+        LogMessage(const char* file, unsigned int line, loglevel_t logLevel, BaseLogger& outputLogger, bool useDefaultLogFormat=true)
             : m_logger(&outputLogger)
         {
-            Init(file, line, logLevel);
+            Init(file, line, logLevel, useDefaultLogFormat);
         }
 
         virtual ~LogMessage()
@@ -358,33 +418,8 @@ namespace cpplog
             return m_logData->stream;
         }
 
-    private:
-        void Init(const char* file, unsigned int line, loglevel_t logLevel)
-        {
-            m_logData = new LogData(logLevel);
-            m_flushed = false;
-            m_deleteMessage = false;
-
-            // Capture data.
-            m_logData->fullPath     = file;
-            m_logData->fileName     = cpplog::helpers::fileNameFromPath(file);
-            m_logData->line         = line;
-            m_logData->messageTime  = ::time(NULL);
-
-            // Get current time.
-            ::tm* gmt = ::gmtime(&m_logData->messageTime);
-            memcpy(&m_logData->utcTime, gmt, sizeof(tm));
-
-#ifdef CPPLOG_SYSTEM_IDS
-            // Get process/thread ID.
-            m_logData->processId    = helpers::get_process_id();
-            m_logData->threadId     = helpers::get_thread_id();
-#endif // CPPLOG_SYSTEM_IDS
-
-            InitLogMessage();
-        }
-
-        void InitLogMessage()
+    protected:
+        virtual void InitLogMessage()
         {
             // Log process ID and thread ID.
 #ifdef CPPLOG_SYSTEM_IDS
@@ -400,17 +435,51 @@ namespace cpplog
                         << m_logData->fileName << "(" << m_logData->line << "): ";
         }
 
+    private:
+        void Init(const char* file, unsigned int line, loglevel_t logLevel, bool useDefaultLogFormat=true)
+        {
+            m_logData = new LogData(logLevel);
+            m_flushed = false;
+            m_deleteMessage = false;
+
+            // Capture data.
+            m_logData->fullPath     = file;
+            m_logData->fileName     = cpplog::helpers::fileNameFromPath(file);
+            m_logData->line         = line;
+            m_logData->messageTime  = ::time(NULL);
+
+            // Get current time.
+            ::tm gmt;
+            cpplog::helpers::sgmtime(&gmt, &m_logData->messageTime);
+            memcpy(&m_logData->utcTime, &gmt, sizeof(tm));
+
+#ifdef CPPLOG_SYSTEM_IDS
+            // Get process/thread ID.
+            m_logData->processId    = helpers::get_process_id();
+            m_logData->threadId     = helpers::get_thread_id();
+#endif // CPPLOG_SYSTEM_IDS
+
+            if( useDefaultLogFormat )
+            {
+                InitLogMessage();
+            }
+        }
+
         void Flush()
         {
             if( !m_flushed )
             {
-                // Check if we have a newline.
-                char lastChar = m_logData->buffer[m_logData->stream.pcount() - 1];
-                if( lastChar != '\n' )
-                    m_logData->stream << std::endl;
+                // Insert newline, if needed.
+                helpers::fixed_streambuf* const sb = &m_logData->streamBuffer;
+                if( sb->peek() != '\n' )
+                {
+                    // If buffer is full, remove last char to leave room for newline.
+                    if( sb->full() )
+                        sb->sunputc();
 
-                // Null-terminate.
-                m_logData->stream << '\0';
+                    // Insert newline
+                    sb->sputc('\n');
+                }
 
                 // Save the log level.
                 loglevel_t savedLogLevel = m_logData->level;
@@ -431,11 +500,11 @@ namespace cpplog
 #ifdef _DEBUG
 // Only exit in debug mode if CPPLOG_FATAL_EXIT_DEBUG is set.
 #if defined(CPPLOG_FATAL_EXIT_DEBUG) || defined(CPPLOG_FATAL_EXIT)
-                    ::exit(1);
+                    std::exit(1);
 #endif
 #else //!_DEBUG
 #ifdef CPPLOG_FATAL_EXIT_DEBUG
-                    ::exit(1)
+                    std::exit(1)
 #endif
 #endif
                 }
@@ -465,10 +534,11 @@ namespace cpplog
         };
     };
 
+
     // Generic class - logs to a given std::ostream.
     class OstreamLogger : public BaseLogger
     {
-    private:
+    protected:
         std::ostream&   m_logStream;
 
     public:
@@ -478,7 +548,8 @@ namespace cpplog
 
         virtual bool sendLogMessage(LogData* logData)
         {
-            m_logStream << logData->buffer;
+            helpers::fixed_streambuf* const sb = &logData->streamBuffer;
+            m_logStream.write(sb->c_str(), sb->length());
             m_logStream << std::flush;
 
             return true;
@@ -515,6 +586,18 @@ namespace cpplog
         {
             m_stream.str("");
             m_stream.clear();
+        }
+    };
+
+    // Simple implementation - no logging
+    class NullLogger : public BaseLogger
+    {    
+    public:
+        NullLogger(){ }
+
+        bool sendLogMessage(LogData* logData)
+        {            
+            return true;
         }
     };
 
@@ -884,6 +967,11 @@ namespace cpplog
                 delete m_forwardTo;
         }
 
+        void SetLevel(loglevel_t allowed)
+        {
+            m_lowestLevelAllowed = allowed;
+        }
+
         virtual bool sendLogMessage(LogData* logData)
         {
             if( logData->level >= m_lowestLevelAllowed )
@@ -999,13 +1087,16 @@ namespace cpplog
         };
 
         // TODO: Implement others?
-    };
-};
+    }
+}
 
 // Our logging macros.
 
 // Default macros - log, and don't log something.
+// Allow custom log message formatting
+#ifndef LOG_LEVEL
 #define LOG_LEVEL(level, logger)    cpplog::LogMessage(__FILE__, __LINE__, (level), logger).getStream()
+#endif
 #define LOG_NOTHING(level, logger)  true ? (void)0 : cpplog::helpers::VoidStreamClass() & LOG_LEVEL(level, logger)
 
 // Series of debug macros, depending on what we log.

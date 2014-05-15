@@ -1,4 +1,5 @@
- /* ********************************************************************************
+ /* Copyright 2005-2014 Pattern Recognition Laboratory, The City University of New York
+  * *******************************************************************************
   * * TITLE:        lmclus.cpp
   * *
   * * PURPOSE:      A linear manifold clustering algorithm based on the paper
@@ -30,8 +31,7 @@
   * *               Rewrote with armadillo
   * *               email: adiky@sci.brooklyn.cuny.edu
   * *               02/18/2013
-  * *
-  * * Copyright 2005-2013 Pattern Recognition Laboratory, The City University of New York
+  * *  
   * **********************************************************************************/
 
 #include <vector>
@@ -39,16 +39,15 @@
 #include <functional>
 #include <limits>
 #include <chrono>
+#include <iomanip>
 
-#include "Kittler.h"
 #include "lmclus.hpp"
 
 #define EPS 1e-8
 
 /* Random number generator
  */
-unsigned int clustering::lmclus::LMCLUS::randromNumber()
-{
+unsigned int clustering::lmclus::LMCLUS::randromNumber() {
     return dist(engine);
 }
 
@@ -70,7 +69,7 @@ int clustering::lmclus::LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const 
 
     double p=1/k;                          // p=probability that 1 point comes from a certain cluster
 
-    double P=pow(p,LMDim);                   // P=probability that "k+1" points are from the same cluster
+    double P= LMDim == 0 ? 2 : pow(p,LMDim);                   // P=probability that "k+1" points are from the same cluster
 
     double N=(log10(para.ERROR_BOUND))/(log10(1-P));
 
@@ -108,47 +107,53 @@ int clustering::lmclus::LMCLUS::sampleQuantity(int LMDim, int fullSpcDim, const 
  */
 arma::uvec clustering::lmclus::LMCLUS::samplePoints(const arma::mat &data, const int LMDim)
 {
-    size_t NumOfPoints = LMDim+1, empty = data.n_rows+1;
-    arma::uvec point_index(NumOfPoints);  
-    bool match, zero;
+    size_t pindex, pid, NumOfPoints = LMDim+1;
+    vector<unsigned int> selected_points;
+    vector<unsigned int> point_index(data.n_rows); 
+    bool zero, unique;       
     
+    LOG_TRACE(log) << "Total points: " << data.n_rows;
     std::uniform_int_distribution<unsigned int>::param_type newParams{0, data.n_rows-1};
     dist.param(newParams);
-    
-    point_index.fill(empty);
-    size_t count = 0;
-    while ( count < NumOfPoints ) {
-        size_t index = randromNumber();
-        LOG_TRACE(log) << "Point index: " << index;
-        size_t found = arma::sum(point_index == index);  
-        if (found == 0)
-        {
-            match = false;
-            zero = true;
-            for(size_t i=0; i<NumOfPoints && point_index(i) != empty; i++)
-            {
-                match = true;
-                zero = true;
-                size_t ii = point_index(i);
-                LOG_TRACE(log) << "Check points: " << i << " <-> " << ii;
-                for(size_t j=0; j < data.n_cols; j++)
-                {
-                   match = match && ((data(index,j) - data(ii,j)) < EPS); 
-                   if (!match) break;
-                   zero  = zero && data(index,j) == 0.0;
-                }
-                if (!match || zero) break;
-            }
-            // new point does not match or zero
-            if (!match || zero)
-            {
-                LOG_TRACE(log) << "Added index " << index << ", # " << count;
-                point_index(count) = index;
-                count++;
-            }
+
+    // make index
+    for(size_t i=0; i<data.n_rows-1;++i)
+        point_index[i] = i;
+
+    while (point_index.size() > 0) {
+        // select random point 
+        pindex = randromNumber();
+        pid = pindex % point_index.size();
+        LOG_TRACE(log) << "Point index: " << pid << 
+            "(" << pindex << ", " << point_index[pid] << ") - Left: " << point_index.size();            
+
+        // check if it zero and matches
+        zero = true;
+        for(size_t j=0; j < data.n_cols; j++)
+            zero  = zero && data(point_index[pid],j) == 0.0;
+
+        unique = true;
+        for(size_t i=0; i<selected_points.size(); i++) {
+            LOG_TRACE(log) << "Check points: " << selected_points[i] << " <-> " << point_index[pid];
+            bool match = true;
+            for(size_t j=0; j < data.n_cols; j++)
+                match = match && ((data(selected_points[i],j) - data(point_index[pid],j)) < EPS);
+            unique = unique && !match;
         }
+
+        // select non-zero unique point 
+        if (!zero && unique) {
+            selected_points.push_back(point_index[pid]);
+            LOG_TRACE(log) << "Selected: " << selected_points.size();
+            if (selected_points.size() == NumOfPoints)
+                break;
+        }
+
+        // remove selected point from index
+        point_index.erase(point_index.begin()+pid);
     }
-    return point_index;
+    
+    return arma::conv_to<arma::uvec>::from(selected_points);
 }
 
 /* sample
@@ -185,30 +190,22 @@ arma::uvec clustering::lmclus::LMCLUS::sample(const int n, const int k)
  * the idea is to pick a point (origin) from the sampled points and generate
  * the basis vectors by subtracting all other points from the origin,
  * creating a basis matrix with one less vector than the number of sampled points.
- * due to GSLMatrix limitations (this was updated), which allows only a "set row" and not a
- * "set column" operation, the basis matrix generated in this function
- * is the transpose of the basis matrix. the function also returns the origin
- * of the basis vectors.
+ * the basis matrix generated in this function is the transpose of the basis matrix. 
+ * the function also updates the origin of the basis vectors.
  */
-arma::mat clustering::lmclus::LMCLUS::formBasis(const arma::mat &points, const arma::rowvec& origin)
-//arma::rowvec formBasis(arma::mat &points, arma::mat &basis)
+arma::mat clustering::lmclus::LMCLUS::formBasis(const arma::mat &points, arma::rowvec& origin)
 {
+    origin = points.row(0);  // let the origin be the fisrt point sampled
     arma::mat basis(points.n_rows-1, points.n_cols);   // create the B (Basis) transpose matrix
-    
-    arma::rowvec b_i;    // let the origin be the fisrt point sampled
-    //LOG_TRACE(log) << "Origin: \n" << origin;
 
     // find the b_i-th basis vector by subtracting each other point (vector) from 'x_1'
+    arma::rowvec b_i;
     for (size_t i=1; i < points.n_rows ; i++) {
-        //LOG_TRACE(log) << "i: \n" << points.row(i);
         b_i = points.row(i) - origin;
-        //LOG_TRACE(log) << "b_" << i << ": \n" << b_i;
         basis.row(i-1) = b_i;   // set the i-th row in the transpose basis matrix to its b_i-th basis vector
-        //LOG_TRACE(log) << "B: \n" << basis;
     }
     
     return basis;
-    //return std::make_pair(origin, basis);
 }
 
 /* GramSchmidtOrthogonalization
@@ -231,13 +228,14 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
 {
     arma::mat B( M.n_rows, M.n_cols );       // create an uninitialized orthogonal basis matrix
 
-    for(unsigned int i=0; i< M.n_rows; i++) {         // for each vector in the original basis convert to an orthogonal vector
+    for(unsigned int i=0; i< M.n_rows; i++) {// for each vector in the original basis convert to an orthogonal vector
         auto m_i = M.row(i);                 // the i-th original basis vector
         
         arma::rowvec x_i( M.n_cols );
+        x_i.zeros();
 
         double x_j;
-        for (unsigned int j=0; j < i; j++) {          // calculate the sum of i-th vector's components in the directions of the
+        for (unsigned int j=0; j < i; j++) { // calculate the sum of i-th vector's components in the directions of the
             // already settled orthogonal basis vectors
             auto b_j = B.row(j);
             x_j = arma::dot( b_j, m_i );
@@ -246,8 +244,7 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
         arma::rowvec b_i = m_i - x_i;        // subtract the sum calculated above (stored in x_i) from the i-th unsettled vector
         double n= arma::norm(b_i, 2);        // make b_i a unit vector
         if(n!=0.0)
-            b_i = b_i * (1/n);
-
+            b_i = b_i * (1/n);        
         B.row(i) = b_i;
     }
     //LOG_TRACE(log) << "B: \n" << B;
@@ -260,7 +257,7 @@ arma::mat clustering::lmclus::LMCLUS::gramSchmidtOrthogonalization(const arma::m
  * ------------------
  * determine the distance of each point in the data set from to a linear manifold,
  *  using: d_n= || (I-P)(z_n-origin) ||
- * where P is the projection matrix, and z_n is the point.
+ * where P is the projection operator matrix, and z_n is the point.
  * (the distance will not be determined for points that were already sampled to create the linear manifold).
  * depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
  */
@@ -287,130 +284,98 @@ arma::vec clustering::lmclus::LMCLUS::determineDistances(
         auto sampleIndex = sample(data.n_rows, n);
         data1 = data.rows(sampleIndex);
     }
-
+    
     // vector to hold distances of points from basis
-    arma::vec d_v, Distances = arma::zeros<arma::vec>(data1.n_rows);
-    arma::rowvec Z_n;
-    double d_n, c, b;
+    arma::vec Distances = arma::zeros<arma::vec>(data1.n_rows);
     unsigned int i;
-    
-    //LOG_INFO(log)<<"Data rows: " << data1.n_rows << ", cols: "<< data1.n_cols;
-    //LOG_INFO(log)<<"P rows: " << P.n_rows << ", cols: "<< P.n_cols;
-    for (i=0; i < data1.n_rows; i++) {
-        // point with respect to basis
-        Z_n = data1.row(i) - origin;
-        // calculate distance of point from basis: d_n= || (I-P)(z_n-origin) ||
-        d_v = P * Z_n.t();
-        c=arma::norm(Z_n, 2);
-        b=arma::norm(d_v, 2);
-        d_n=sqrt((c*c)-(b*b));
-        if(d_n>=0 && d_n<1000000000)
-            Distances(i) = d_n;
+    #pragma omp parallel for private(i) shared(data1, origin, P, Distances)
+    for (i=0; i < Distances.n_rows; i++) {
+        Distances(i) = distanceToManifold(data1.row(i) - origin, P);
     }
-    
-//    data1.each_row() -= origin;
-//    arma::mat d_m = P * data1.t();
-//    //LOG_INFO(log)<<"DM rows: " << d_m.n_rows << ", cols: "<< d_m.n_cols;
-//    for (i=0; i < d_m.n_cols; i++) {
-//        c=arma::norm(data1.row(i), 2);
-//        b=arma::norm(d_m.col(i), 2);
-//        d_n=sqrt((c*c)-(b*b));
-//        if(d_n>=0 && d_n<1000000000)
-//            Distances(i) = d_n;
-//    }
 
     return Distances;
 }
-/*
-arma::vec clustering::lmclus::LMCLUS::determineDistances(
-    const arma::mat &data, const arma::mat &P, 
-    const arma::rowvec &origin, const Parameters &para)
+
+/* distanceToManifold
+ * ------------------
+ * calculates distance from point to manifold defined by basis and origin
+ * using: d_n= || (I-P)x || (1)
+ * where P is the projection operator matrix, and z_n is the point.
+ * But calculations are optimized in a following way
+ * || x ||^2 = || Px + (I-P)x ||^2
+ * || x ||^2 = || Px ||^2 + || (I-P)x ||^2
+ * because P = BB' and P^2 = BB'BB' = BIB' = BB' = P then
+ * || x ||^2 = || BB'x ||^2 + || (I-P)x ||^2
+ * but || BB'x ||^2 = (BB'x)'BB'x = x'BB'BB'x = x'BIB'x = x'BB'x = = (B'x)'B'x = || B'x ||^2
+ * so || x ||^2 = || B'x ||^2 + || (I-P)x ||^2
+ * || x ||^2 = || B'x ||^2 + d_n from (1)
+ * thus d_n = || x ||^2 -|| B'x ||^2
+ * where B is a basis matrix and B' - its transpose.
+ * Note: depending on LMCLUS's input parameters only a sample of distances will be computed to enhance efficiency.
+ */
+double clustering::lmclus::LMCLUS::distanceToManifold(
+    const arma::rowvec &point, const arma::mat &B_T)
 {
-    arma::mat data1;
-
-    if(para.HIS_SAMPLING) 
-    {
-        double Z_01=2.576;                               // Z random variable, confidence interval 0.99
-        double delta_p=0.2;
-        double delta_mu=0.1;
-        double P=1/static_cast<double>(para.NUM_OF_CLUS);
-        double Q=1-P;
-        double n1=(Q/P)*((Z_01*Z_01)/(delta_p*delta_p));
-        double p=( P<=Q ? P : Q );
-        double n2=(Z_01*Z_01)/(delta_mu*delta_mu*p);
-        double n3= ( n1 >= n2 ? n1 : n2 );
-        unsigned int n4= static_cast<int> (n3);
-        int n= ( data.n_rows <= n4 ? data.n_rows-1 : n4 );
-
-        auto sampleIndex = sample(data.n_rows, n);
-        data1 = arma::mat(data.rows(sampleIndex).t());
-    } else
-        data1 = arma::mat(data).t();
-
-    // vector to hold distances of points from basis
-    arma::vec d_v, Distances = arma::zeros<arma::vec>(data1.n_rows);
-    arma::rowvec Z_n;
-    double d_n, c, b;
-    unsigned int i, n, m;
-
-    data1.each_col() -= origin.t();
-    arma::mat d_m = P * data1;
-    n = d_m.n_cols;
-    m = d_m.n_rows;
-    std::vector<double> distances(n); 
-    //double *ddata = data1.memptr();
-    //double *dd_m = d_m.memptr();
-    //LOG_INFO(log)<<"DM rows: " << d_m.n_rows << ", cols: "<< d_m.n_cols;
-    //#pragma omp parallel for private(i, c, b, d_n) shared(distances)
-    for (i=0; i < n; i++) {
-        c=arma::norm(data1.col(i), 2);
-        b=arma::norm(d_m.col(i), 2);
-        d_n=sqrt((c*c)-(b*b));
-        if(d_n>=0 && d_n<1000000000)
-            distances[i] = d_n;
-    }
-    Distances = arma::conv_to<arma::vec>::from(distances);
-
-    return Distances;
+    double d_n = 0.0, c, b;
+    arma::vec d_v = B_T * point.t();
+    c=arma::norm(point, 2);
+    b=arma::norm(d_v, 2);
+    d_n=sqrt((c*c)-(b*b));
+    if(d_n<0 && d_n>1000000000)
+        d_n = 0.0;
+    return d_n;
 }
-*/
+
+double clustering::lmclus::LMCLUS::projectTo1D(
+    const arma::rowvec &point, const arma::mat &B_T)
+{
+    arma::vec d_v = B_T * point.t();
+    return d_v(0);
+}
+
 
 /* findBestSeparation
  * --------------------
- * LMCLUS's main function:
  * 1- sample trial linear manifolds by sampling points from the data
  * 2- create distance histograms of the data points to each trial linear manifold
  * 3- of all the linear manifolds sampled select the one whose associated distance histogram shows the best separation between to modes.
  */
-clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (const arma::mat &data, const int LMDim, const Parameters &params)
-{
+clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation(
+    const arma::mat &data, const int LMDim, const Parameters &params) {
+
     int DataSize = data.n_rows;
     int FullSpcDim = data.n_cols;
+    int histBins = params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : 
+                static_cast<int>(DataSize * params.MAX_BIN_PORTION);
 
-    LOG_INFO(log)<<"data size="<<DataSize<<"   linear manifold dim="<<LMDim<<"   space dim="<<FullSpcDim<<"   searching for separation ...";
+    LOG_INFO(log)<<"data size="<<DataSize<<"   linear manifold dim="<<LMDim
+        <<"   space dim="<<FullSpcDim<<"   hist bins="<<histBins
+        <<"   searching for separation ...";
     LOG_INFO(log)<<"------------------------------------------------------------";
-    Separation best_sep;                                // contains info about best separation
+    Separation best_sep;    // contains info about best separation
 
     // determine number of samples of "LMDim+1" points
     int i;
     int Q = LMCLUS::sampleQuantity( LMDim, FullSpcDim, DataSize, params );
     LOG_TRACE(log) << "Collect " << Q << " sample(s)";
-    
+
     #pragma omp parallel for private(i) shared(best_sep, data, Q)
-    for (i=0; i < Q; i++) {                         // sample Q times SubSpaceDim+1 points
+    for (i=0; i < Q; i++) {     // sample Q times SubSpaceDim+1 points
         LOG_TRACE(log) << "Iteration: " << i;
-        arma::uvec points_idx = samplePoints(data, LMDim);   //  sample LMDim+1 points
-        if (points_idx.n_elem < static_cast<unsigned>(LMDim+1)) continue;        
+        arma::uvec points_idx = samplePoints(data, LMDim);  //  sample LMDim+1 points
+        if (points_idx.n_elem < static_cast<unsigned>(LMDim+1))
+            continue;
 
         // form basis (transpose) of the linear manifold spanned by the sampled points (vectors)
         arma::mat sample = data.rows(points_idx);
-        auto origin = sample.row(0); 
+        arma::rowvec origin = sample.row(0); 
         auto basis = formBasis(sample, origin);
         LOG_TRACE(log) << "Origin: \n" << origin << "Collected basis :\n" << basis <<std::endl;
+        
         // orthogonalize Basis ( with orthonormal basis-vectors)
         auto B_T = gramSchmidtOrthogonalization(basis);           
         LOG_TRACE(log) << "Orthogonal basis:\n" << basis;
-        
+
         // determine distances of points to the linear manifold
         arma::vec distances = determineDistances(data, B_T, origin, params);
         double RHmin=distances.min();
@@ -418,8 +383,8 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (c
         LOG_TRACE(log) << "Distances from " << RHmin << " to " << RHmax;
 
         // generate a distances histogram
-        arma::uvec hist = arma::hist(distances, params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : static_cast<int>(distances.n_elem * params.MAX_BIN_PORTION));
-        
+        arma::uvec hist = arma::hist(distances, histBins);
+
         // Cannot calculate distances
         auto filledBins = find(hist > 0).eval();
         LOG_TRACE(log) << "Non-empty bins: \n" << filledBins.n_elem;
@@ -434,8 +399,10 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (c
         K.FindThreshold(histNorm, RHmin, RHmax);
         LOG_TRACE(log) << "Found threshold: " << K.GetDiscrim()*K.GetDepth();
 
-        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), origin, B_T, hist);  // store separation info
-        
+        // store separation info
+        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), 
+                origin, B_T, histNorm, K.GetMinIndex(), distances);
+
         // keep track of best histogram/separation
         #pragma omp critical(find_separation)
         if ( (K.GetDiscrim()*K.GetDepth() ) > best_sep.get_criteria()  ){
@@ -445,232 +412,339 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation (c
     }
 
     if (best_sep.get_criteria()==0)
-        LOG_DEBUG(log) << "no good histograms to spearate data !!!";
+        LOG_DEBUG(log) << "no good histograms to separate data !!!";
     else {
         LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="<<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();
     }
     return best_sep;
 }
 
+/* findBestZeroManifoldSeparation
+ * --------------------
+ * 1- sample 0-dimensioanl manifolds origins (points)
+ * 2- calculate distance to origin from each point of dataset
+ * 3- calculate the densify function (actualy mass function) of distances from origin  
+      and determine the best separation if it is multimodal
+ */
+clustering::lmclus::Separation 
+    clustering::lmclus::LMCLUS::findBestZeroManifoldSeparation(
+    const arma::mat &data, const Parameters &params, const Separation &sep) {
 
-void clustering::lmclus::LMCLUS::find_manifold(const arma::mat &data, const Parameters &para, 
-                 arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
-                 std::vector<Separation> &separations, bool &Noise, int &SepDim)
-{
-    for(int lm_dim=1; lm_dim < para.MAX_DIM+1 && !Noise; lm_dim++) {
-        while(true) {
-            // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
-            Separation best_sep=findBestSeparation(data.rows(points_index), lm_dim, para);
-            //LOG_TRACE(log) << "Proj: \n"<< best_sep.get_projection();
-            LOG_DEBUG(log) << "BEST_BOUND: "<< best_sep.get_criteria() << "(" << para.BEST_BOUND << ")";
-            
-            if (best_sep.get_criteria() < para.BEST_BOUND ) break;
-            SepDim=lm_dim;
-            
-            // find which points are close to manifold 
-            std::vector<unsigned int> best_points;
-            double threshold = best_sep.get_threshold();
-            arma::mat Projection = best_sep.get_projection();
-            arma::rowvec origin = best_sep.get_origin();
-            
-            LOG_TRACE(log) << "Threshold: " << threshold;
-            LOG_TRACE(log) << "Origin: \n" << origin;
+    int DataSize = data.n_rows;
+    int FullSpcDim = data.n_cols;    
+    size_t histBins = params.CONST_SIZE_HIS>0 ? params.CONST_SIZE_HIS : 
+                static_cast<size_t>(DataSize * params.MAX_BIN_PORTION);
+    Separation best_sep(FullSpcDim);
 
-            unsigned int idx;
-            for(unsigned int i=0; i < points_index.n_rows; i++) {
-                idx = points_index(i);
-                arma::rowvec Z_n  = data.row(idx) - origin; // point with respect to basis
-                // calculate distance of point from basis:  d_n= || (I-P)(z_n-origin) ||
-                arma::vec d_v = Projection * Z_n.t();
-                double d_n=0;
-                double c = norm(Z_n, 2);
-                double b = norm(d_v, 2);
-                d_n=sqrt(fabs((c*c)-(b*b)));
-                if(d_n < threshold)    // point i has distances less than the threshold value
-                    best_points.push_back(idx);          // add to best points
-                else
-                    nonClusterPoints.push_back(idx);
-            }
-            
-            LOG_DEBUG(log) << "Separated points: "<< best_points.size();
-            points_index = arma::conv_to<arma::uvec>::from(best_points);                
-                            
-            if(points_index.n_rows< para.NOISE_SIZE) {       // small amount of points is considered noise
-                Noise=true;
-                LOG_INFO(log)<<"noise less than "<<para.NOISE_SIZE<<" points";
-                break;
-            }
-            
-            separations.push_back(best_sep);
-            LOG_DEBUG(log) << "Best basis:"<< std::endl << best_sep.get_projection();
+    LOG_INFO(log)<<"data size="<<DataSize<<"   linear manifold dim=0"
+        <<"   space dim="<<FullSpcDim<<"   hist bins="<<histBins
+        <<"   searching for separation ...";
+    LOG_INFO(log)<<"------------------------------------------------------------"; 
+
+    // determine number of samples of "LMDim+1" points
+    int i, Q = LMCLUS::sampleQuantity( 1, FullSpcDim, DataSize, params );
+    LOG_TRACE(log) << "Collect " << Q << " sample(s)";
+
+    for (i = 0; i < Q; ++i) {
+        unsigned int point_idx = rand() % data.n_rows;
+
+        // Calculate distances to origin
+        arma::vec distances = arma::zeros<arma::vec>(data.n_rows);
+        arma::mat B_T = sep.get_projection();
+        arma::rowvec origin = sep.get_origin();
+        double zd_origin = dot(B_T.row(0), (data.row(point_idx) - origin));
+        for (size_t j=0; j < data.n_rows; j++) {
+            distances[j] = abs(zd_origin - dot(B_T.row(0), (data.row(j) - origin)));
         }
+        double RHmin=distances.min();
+        double RHmax=distances.max();        
+        
+        arma::vec histNorm;
+        // Build histogram for 0-dim manifold search
+        if (histBins >= params.HIS_THR) { 
+            // generate a distances histogram
+            arma::uvec hist = arma::hist(distances, histBins);
 
-        LOG_INFO(log) << "# of points = " << points_index.n_rows;
+            // Cannot calculate distances
+            auto filledBins = find(hist > 0).eval();
+            LOG_TRACE(log) << "Non-empty bins: \n" << filledBins.n_elem;
+            if ( filledBins.n_elem < 2)
+                continue;
+            
+            // Threshold histogram and determine goodness of separation
+            histNorm = arma::conv_to< arma::vec >::from(hist) / static_cast<double>(distances.n_elem);
+        } 
+        // Calculate density function
+        else {
+            histNorm = histBootstrapping(distances, params.HIS_THR);
+            if ( histNorm.n_elem < 2)
+                continue;
+        
+            origin = data.row(point_idx);            
+        }   
 
-        if(lm_dim<para.MAX_DIM && !Noise)
-            LOG_INFO(log)<<"no separation, increasing dim ...";
-        else
-            LOG_INFO(log)<<"no separation ...";
+        // Find threshold
+        Kittler K;
+        K.FindThreshold(histNorm, RHmin, RHmax);     
+        LOG_TRACE(log) << "Found threshold: " << K.GetDepth();
 
+        // store separation info
+        Separation sep(K.GetDiscrim(), K.GetDepth(), K.GetThreshold(), 
+                origin, B_T, histNorm, K.GetMinIndex(), distances);
+
+        //#pragma omp critical(find_separation) 
+        if ((K.GetDiscrim()*K.GetDepth()) > best_sep.get_criteria()) {
+            LOG_TRACE(log) << "Depth: " << K.GetDepth();
+            LOG_TRACE(log) << "0D Origin: " << sep.get_origin();
+            LOG_TRACE(log) << "Found orthogonal basis:\n" << sep.get_projection();
+            best_sep=sep;         
+        }
+    }    
+    
+    if (best_sep.get_criteria() == 0)
+        LOG_DEBUG(log) << "no good histograms to separate data !!!";
+    else{
+        LOG_DEBUG(log) <<"sep width="<<best_sep.get_width()<<"  sep depth="
+            <<best_sep.get_depth() << "  sep criteria="<<best_sep.get_criteria();        
+        LOG_DEBUG(log)<< "his_size=" << best_sep.get_histogram().n_elem
+            << ", bins=" << histBins;
     }
+
+    // std::cout << "criteria: " << best_sep.get_criteria() << std::endl;        
+    // std::cout << "ddensity = c(";
+    // auto dd = best_sep.get_histogram();
+    // for(size_t I=0; I < dd.n_elem; ++I) { std::cout << dd(I) << ", "; }
+    // std::cout << ")" << std::endl;    
+    // dd = best_sep.get_distances();        
+    // std::cout << "ddist = c(";
+    // for(size_t I=0; I < dd.n_elem; ++I) { std::cout << dd(I) << ", "; }
+    // std::cout << ")" << std::endl;
+
+    return best_sep;
 }
 
-void clustering::lmclus::LMCLUS::cluster(const arma::mat &data, const Parameters &para, 
-    std::vector<arma::uvec> &labels, std::vector<double> &thresholds, 
-    std::vector<arma::mat> &bases, std::vector<int> &clusterDims, 
-    std::vector<arma::vec> &origins, callback_t progress)
+
+/* findManifold
+ * --------------------
+ * 1- calculate best separation of a manifold
+ * 2- filter point that belong to found manifold
+ */
+bool clustering::lmclus::LMCLUS::findManifold(const arma::mat &data, 
+        const Parameters &para, 
+        arma::uvec &points_index, std::vector<unsigned int> &nonClusterPoints,
+        Separation &best_sep, bool &Noise, int lm_dim)
 {
+    bool separated = false;
+    while (true) {
+        // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
+        Separation sep;
+        if (lm_dim == 0) {
+            sep = findBestZeroManifoldSeparation(data.rows(points_index), para, best_sep);            
+        } else {
+            sep = findBestSeparation(data.rows(points_index), lm_dim, para);
+        }
+        LOG_INFO(log) << "BEST_BOUND: "<< sep.get_criteria() << " >= " << para.BEST_BOUND;
+        if (sep.get_criteria() < para.BEST_BOUND ) break;
+
+        // find which points are close to manifold 
+        separated = true;
+        best_sep = sep;
+        std::vector<unsigned int> best_points;
+        double threshold = best_sep.get_threshold();
+        arma::mat Projection = best_sep.get_projection();
+        arma::rowvec origin = best_sep.get_origin();
+        arma::vec distances = best_sep.get_distances();
+
+        LOG_DEBUG(log) << "Threshold: " << threshold;
+        LOG_DEBUG(log) << "Origin: \n" << origin;
+
+        // std::cout << "criteria: " << best_sep.get_criteria() << std::endl;        
+        // std::cout << "ddensity = c(";
+        // auto dd = best_sep.get_histogram();
+        // for(size_t I=0; I < dd.n_elem; ++I) { std::cout << dd(I) << ", "; }
+        // std::cout << ")" << std::endl;    
+        // dd = best_sep.get_distances();        
+        // std::cout << "ddist = c(";
+        // for(size_t I=0; I < dd.n_elem; ++I) { std::cout << dd(I) << ", "; }
+        // std::cout << ")" << std::endl;
+
+        LOG_TRACE(log) << "Indexes: ";
+        unsigned int i, idx;
+        std::vector<unsigned int> discard;            
+        for(i=0; i < points_index.n_rows; i++) {
+            idx = points_index(i);
+            //TODO: This is a temporary. See determineDistances()
+            // if (lm_dim == 0)
+            //     d_n = abs(zd_origin - dot(Projection.row(0), (data.row(idx) - origin)));
+            // else
+            //     d_n = distanceToManifold(data.row(idx) - origin, Projection);                    
+            
+            if (distances(i) < threshold) {    // point i has distances less than the threshold value
+                best_points.push_back(idx);  // add to best points
+                LOG_TRACE(log) << distances(i) << "(" << idx << ")";
+            }
+            else
+                discard.push_back(idx);
+        }        
+
+        LOG_DEBUG(log) << "Separated points: "<< best_points.size();        
+        if (best_points.size() < para.NOISE_SIZE) {       // small amount of points is considered noise
+            Noise=true;
+            LOG_INFO(log)<<"noise less than "<<para.NOISE_SIZE<<" points";
+            break;
+        }        
+        nonClusterPoints.insert (nonClusterPoints.end(), discard.begin(), discard.end());
+        points_index = arma::conv_to<arma::uvec>::from(best_points);
+
+        LOG_DEBUG(log) << "Best basis:"<< std::endl << best_sep.get_projection();
+    }
+
+    LOG_INFO(log) << "# of points = " << points_index.n_rows;
+    if(lm_dim > 0 && lm_dim < para.MAX_DIM && !Noise)
+        LOG_INFO(log)<<"no separation, increasing dim ...";
+    else
+        LOG_INFO(log)<<"no separation ...";
+        
+    return separated;
+}
+
+
+/* cluster
+ * --------------------
+ * LMCLUS's main function:
+ * 1- find manifold for specific dimension
+ * 2- if could not be found increase dimension
+ * 3- separate found manifold from data and begin search again
+ */
+void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
+    const Parameters &para, std::vector<arma::uvec> &labels,
+    std::vector<int> &clusterDims,
+    std::vector<clustering::lmclus::Separation> &separations,
+    callback_t progress) {
+
     // Initialize random generator
-    if(para.RANDOM_SEED>0)
+    if (para.RANDOM_SEED>0) {
         engine.seed(para.RANDOM_SEED);
-    else 
-    {
+    } else {
         // obtain a seed from the system clock:
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         engine.seed(seed);
     }
-    
-    std::vector<unsigned int> noise;
-    bool groupNoise = true;
 
-    std::vector<Separation> separations;
     arma::uvec points_index = arma::linspace<arma::uvec>(0, data.n_rows, data.n_rows);
 
-    int ClusterNum=0;
+    int ClusterNum = 0;
     do {
-        bool Noise=false;
+        Separation best_sep(data.n_cols);
+        bool Noise = false;
         std::vector<unsigned int> nonClusterPoints;
-        int SepDim=0;                             // dimension in which separation was found
-        
-        //find_manifold(data, para, points_index, nonClusterPoints, separations, Noise, SepDim);
+        int SepDim = 0;  // dimension in which separation was found
 
-        for(int lm_dim=1; lm_dim < para.MAX_DIM+1 && !Noise; lm_dim++) {
-            
-            while(true) {
-                // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
-                Separation best_sep=findBestSeparation(data.rows(points_index), lm_dim, para);
-                //LOG_TRACE(log) << "Proj: \n"<< best_sep.get_projection();
-                LOG_DEBUG(log) << "BEST_BOUND: "<< best_sep.get_criteria() << "(" << para.BEST_BOUND << ")";
-                
-                if (best_sep.get_criteria() < para.BEST_BOUND ) break;
-                SepDim=lm_dim;
-                
-                // find which points are close to manifold 
-                std::vector<unsigned int> best_points;
-                double threshold = best_sep.get_threshold();
-                arma::mat Projection = best_sep.get_projection();
-                arma::rowvec origin = best_sep.get_origin();
-                
-                LOG_TRACE(log) << "Threshold: " << threshold;
-                LOG_TRACE(log) << "Origin: \n" << origin;
-
-                unsigned int idx;
-                for(unsigned int i=0; i < points_index.n_rows; i++) {
-                    idx = points_index(i);
-                    arma::rowvec Z_n  = data.row(idx) - origin; // point with respect to basis
-                    // calculate distance of point from basis:  d_n= || (I-P)(z_n-origin) ||
-                    arma::vec d_v = Projection * Z_n.t();
-                    double d_n=0;
-                    double c = norm(Z_n, 2);
-                    double b = norm(d_v, 2);
-                    d_n=sqrt(fabs((c*c)-(b*b)));
-                    if(d_n < threshold)    // point i has distances less than the threshold value
-                        best_points.push_back(idx);          // add to best points
-                    else
-                        nonClusterPoints.push_back(idx);
-                }
-                
-                LOG_DEBUG(log) << "Separated points: "<< best_points.size();
-                points_index = arma::conv_to<arma::uvec>::from(best_points);                
-                                
-                if(points_index.n_rows< para.NOISE_SIZE) {       // small amount of points is considered noise
-                    Noise=true;
-                    LOG_INFO(log)<<"noise less than "<<para.NOISE_SIZE<<" points";
-                    break;
-                }
-                
-                separations.push_back(best_sep);
-                LOG_DEBUG(log) << "Best basis:"<< std::endl << best_sep.get_projection();
-            }
-
-            LOG_INFO(log) << "# of points = " << points_index.n_rows;
-
-            if(lm_dim<para.MAX_DIM && !Noise)
-                LOG_INFO(log)<<"no separation, increasing dim ...";
-            else
-                LOG_INFO(log)<<"no separation ...";
-
+        // Bottom-up search for proper dimension
+        for (int i = 1; i < para.MAX_DIM+1; i++) {
+            if (findManifold(data, para, points_index, nonClusterPoints, best_sep, Noise, i))
+                SepDim = i;
+            if (Noise) break;
         }
+
+        // Top-down search for embedded manifolds
+        if (SepDim>0)
+            LOG_DEBUG(log) << "Top-Down search d=" << SepDim-1;
+            if (findManifold(data, para, points_index, nonClusterPoints, best_sep, Noise, SepDim-1)) {
+                SepDim--;                
+                LOG_DEBUG(log) << "criteria: " << best_sep.get_criteria();
+                LOG_DEBUG(log) << "origin: " << best_sep.get_origin();
+                LOG_DEBUG(log) << "density: " << best_sep.get_histogram().t();
+                LOG_DEBUG(log) << "distances: " << best_sep.get_distances().t();                
+            }
 
         // second phase (steps 9-12)
         ClusterNum++;
         std::string msg("found cluster # "+to_string(ClusterNum)+
             ", size="+to_string(points_index.n_rows)+", dim="+to_string(SepDim));
         LOG_INFO(log)<<msg;
-        if(progress != nullptr) 
+        if (progress != nullptr)
             progress(msg.c_str());
-        
-        if (Noise && groupNoise) {
-            for(size_t i = 0; i < points_index.n_rows; ++i)
-                noise.push_back(points_index(i));
-            ClusterNum--;
-        } else {
-            clusterDims.push_back(SepDim);
-            //labels.push_back(points_index);     
-            if (SepDim > 0)
-                labels.push_back(points_index);     
-            else
-                // if dimension is 0 then dataset is unseparable so list it as cluster
-                labels.push_back(points_index);
-            
-            // Save cluster basis
-            if (separations.size() > 0)
-            {
-                Separation bs = separations[separations.size()-1];
-                bases.push_back(bs.get_projection());
-                thresholds.push_back(bs.get_threshold());
-                origins.push_back(bs.get_origin());
-            
-                LOG_TRACE(log) << "Basis: \n"<< bs.get_projection();
-                LOG_TRACE(log) << "Origin: " << bs.get_origin();
-                LOG_TRACE(log) << "Threshold: " << bs.get_threshold();
-            }
-            else
-            {
-                thresholds.push_back(0.0);
-                bases.push_back(arma::zeros<arma::mat>(1,para.MAX_DIM+1));
-                origins.push_back(arma::zeros<arma::vec>(para.MAX_DIM+1));
-            }    
-        }
-        
+
+        clusterDims.push_back(SepDim);
+        labels.push_back(points_index);
+        separations.push_back(best_sep);
+
         // separate cluster points from the rest of the data
         points_index = arma::conv_to<arma::uvec>::from(nonClusterPoints);
-        separations.clear();
-        
+
         // Stop clustering if we reached limit
         if (ClusterNum == para.NUM_OF_CLUS) break;
 
-    } while(points_index.n_rows > para.NOISE_SIZE);
-    
-    // take care of remaining points
-    if(points_index.n_rows>0)
-    {
-        for(unsigned int c=0; c<points_index.n_rows; ++c)
-            noise.push_back(points_index(c));
-    }
+    } while (points_index.n_rows > para.NOISE_SIZE);
     
     // Add noise as cluster
-    if (noise.size() > 0)
-    {
-        auto noise_index = arma::conv_to<arma::uvec>::from(noise);
+    if (points_index.n_rows > 0)
+    {        
+        Separation sep(0., 0., 0.,
+            arma::zeros<arma::rowvec>(para.MAX_DIM+1),
+            arma::zeros<arma::mat>(1,para.MAX_DIM+1),
+            arma::zeros<arma::vec>(1), 0,
+            arma::zeros<arma::rowvec>(0)
+            );
         clusterDims.push_back(0);
-        thresholds.push_back(0.0);        
-        bases.push_back(arma::zeros<arma::mat>(1,para.MAX_DIM+1));
-        origins.push_back(arma::zeros<arma::vec>(para.MAX_DIM+1));
-        labels.push_back(noise_index); 
-        LOG_INFO(log)<<"found cluster #(noise) size="<<noise.size()<<" !!!";
+        labels.push_back(points_index);
+        separations.push_back(sep);
+        LOG_INFO(log)<<"found cluster #(noise) size="<< points_index.n_rows <<" !!!";
     }
     
     return;
 }
 
+
+arma::vec clustering::lmclus::histBootstrapping(arma::vec distances, size_t bins){
+
+    arma::vec dsorted = sort(distances);
+    size_t S = distances.n_elem;
+    size_t L = static_cast<size_t>(sqrt(dsorted.n_elem)/2.);
+    if ( L < 1)
+        return arma::mat();
+
+    // generate a mass function
+    arma::vec emf_x = arma::vec(S-2*L);
+    arma::vec emf_y = arma::vec(S-2*L);
+    for (size_t i = L; i < S-L; i++){            
+        emf_x[i-L] = dsorted[i];
+        emf_y[i-L] = 2.0*L+1.0/(dsorted[i+L]-dsorted[i-L]);
+    }    
+
+    //std::cout.precision(7);
+    //emf_x.raw_print(std::cout, "\nemf_x:");
+    //emf_y.raw_print(std::cout, "\nemf_y:");    
+       
+    // generate bins boundaries
+    double min_d = emf_x[0], max_d = emf_x[emf_x.n_elem-1];
+    arma::vec lims = arma::vec(bins+1);
+    for (size_t i = 0; i <= bins; i++){
+        lims[i] = min_d + i*(max_d-min_d)/bins;
+    }  
+    //lims.raw_print(std::cout, "\nboundaries:");
+
+    // interpolate and integrate linear piecewise PDF
+    double ilppdf, lx, ly, gx, gy;
+    arma::vec lppdf = arma::vec(bins+1);
+    lppdf[0] = emf_y[0];
+    ilppdf = emf_y[0];
+    for (size_t i=1; i<bins; i++){        
+        size_t tail = arma::find(emf_x < lims[i]).eval().n_elem;
+        ly = emf_y[tail-1];
+        lx = emf_x[tail-1];
+        gy = emf_y[tail];
+        gx = emf_x[tail];       
+        lppdf[i] = (lims[i] - lx)*(gy-ly)/(gx-lx)+ly;                 
+        ilppdf += 2*lppdf[i];
+        //std::cout << i << ": " << lims[i] << " = " << lppdf[i] << "(" << ilppdf << ", " << tail << ")"<< std::endl;
+    }
+    lppdf[bins] = emf_y[emf_y.n_elem-1];    
+    ilppdf += lppdf[bins];    
+    ilppdf *=(max_d-min_d)/(2*bins);
+    lppdf /= ilppdf;
+    //lppdf.raw_print(std::cout, "\nlppdf:");    
+
+    return lppdf / arma::sum(lppdf);
+}

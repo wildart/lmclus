@@ -1,7 +1,7 @@
-/*
+/* Copyright 2005-2014 Pattern Recognition Laboratory, The City University of New York
  * =====================================================================================
  *
- *       Filename:  lmclus_r.cpp
+ *       Filename:  lmclusr.cpp
  *
  *    Description:  LMCLUS R-interface
  *
@@ -15,66 +15,106 @@
  *
  * =====================================================================================
  */
-#include "Kittler.h"
+#include <armadillo>
 #include "lmclus.hpp"
 
 #include <R.h>
 #include <Rdefines.h>
 
-void output_callback(const char *msg){
+
+void output_callback(const char *msg) {
     Rprintf("%s\n", msg);
 }
 
 extern "C" {
-    
-SEXP kittler(SEXP Xs, SEXP minX, SEXP maxX) 
-{
-    unsigned int n, nprotect = 0;
-    try{
-    SEXP Rdim = getAttrib(Xs, R_DimSymbol);
+
+SEXP distToManifold(SEXP x, SEXP b_t) {
+    int l, n, m;
+    try {
+    // Get point
+    l = LENGTH(x);
+    x = AS_NUMERIC(x);
+    arma::rowvec point(REAL(x), l, false);
+    // Get basis
+    SEXP Rdim = getAttrib(b_t, R_DimSymbol);
     n = INTEGER(Rdim)[0];
-    Xs = AS_NUMERIC(Xs);
-    arma::vec hist(REAL(Xs), n, false);
-    double RHmin = hist.min();
-    double RHmax = hist.max();
+    m = INTEGER(Rdim)[1];
+    b_t = AS_NUMERIC(b_t);
+    arma::mat B_T(REAL(b_t), n, m, false);
+    // Calculate distance
+    double dist = clustering::lmclus::LMCLUS::distanceToManifold(point, B_T);
+    return ScalarReal(dist);
+    } catch(...) {
+        ::Rf_error("c++ exception (unknown reason)");
+    }
+    return R_NilValue;
+}
+
+SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
+    unsigned int i, n, nprotect = 0;
+    try {
+    n = LENGTH(nH);
+    nH = AS_NUMERIC(nH);
+    arma::vec hist(REAL(nH), n, false);
+    double RHmin = REAL(minX)[0];
+    double RHmax = REAL(maxX)[0];    
+
     Kittler K;
-    K.FindThreshold(hist, RHmin, RHmax);    
-    
-    SEXP Return_lst, Rnames, Rthreshold, Rseparation;
+    bool res = K.FindThreshold(hist, RHmin, RHmax);
+    if (!res)
+        Rprintf("no minimum, unimode histogram\n");
+
+    SEXP Return_lst, Rnames, Rthreshold, Rdiscriminability, Rdepth,
+         Rcriterion, Rglobalmin, Rminidx;
     PROTECT(Rthreshold = ScalarReal(K.GetThreshold())); nprotect++;
-    PROTECT(Rseparation = ScalarReal(K.GetDiscrim()*K.GetDepth())); nprotect++;    
-    PROTECT(Return_lst = allocVector(VECSXP,2)); nprotect++;
-    
+    PROTECT(Rdiscriminability = ScalarReal(K.GetDiscrim())); nprotect++;
+    PROTECT(Rdepth = ScalarReal(K.GetDepth())); nprotect++;
+    PROTECT(Rglobalmin = ScalarReal(K.GetGlobalMin())); nprotect++;
+    PROTECT(Rminidx = ScalarInteger(K.GetMinIndex())); nprotect++;
+    // Criterion function
+    auto cf = K.GetCriterionFunc();
+    PROTECT(Rcriterion = allocVector(REALSXP, cf.size())); nprotect++;
+    for (i = 0; i < cf.size(); ++i)
+        REAL(Rcriterion)[i] = cf[i];
+
+    // Result
+    PROTECT(Return_lst = allocVector(VECSXP, 6)); nprotect++;
+
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(2)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(6)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("threshold"));
-    SET_STRING_ELT(Rnames, 1, mkChar("separation"));    
+    SET_STRING_ELT(Rnames, 1, mkChar("discriminability"));
+    SET_STRING_ELT(Rnames, 2, mkChar("depth"));
+    SET_STRING_ELT(Rnames, 3, mkChar("criterion"));
+    SET_STRING_ELT(Rnames, 4, mkChar("globalmin"));
+    SET_STRING_ELT(Rnames, 5, mkChar("minindex"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
     SET_VECTOR_ELT(Return_lst, 0, Rthreshold);
-    SET_VECTOR_ELT(Return_lst, 1, Rseparation);
+    SET_VECTOR_ELT(Return_lst, 1, Rdiscriminability);
+    SET_VECTOR_ELT(Return_lst, 2, Rdepth);
+    SET_VECTOR_ELT(Return_lst, 3, Rcriterion);
+    SET_VECTOR_ELT(Return_lst, 4, Rglobalmin);
+    SET_VECTOR_ELT(Return_lst, 5, Rminidx);
 
     UNPROTECT(nprotect);
     return Return_lst;
-    
-    } catch(...) {         
-        ::Rf_error( "c++ exception (unknown reason)" ); 
+    } catch(...) {
+        ::Rf_error("c++ exception (unknown reason)");
     }
     return R_NilValue;
 }
-    
-SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound, SEXP errorBound, 
-	    SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize, SEXP sampleHeuristic, 
-	    SEXP sampleFactor, SEXP randomSeed, SEXP showLog) 
-{
-    Rprintf("Linear manifold clustering...\n"); 
-    int n, m, nprotect = 0, show_log;
+
+SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound,
+    SEXP errorBound, SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize,
+    SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog, SEXP hisThr) {
+
+    Rprintf("Linear manifold clustering...\n");
+    int n, m, show_log, nprotect = 0;
     size_t i, j, k;
-    
-    cpplog::StringLogger log;
-    try{   
-    
+
+    try {
     // Set parameters
     clustering::lmclus::Parameters params;
     params.MAX_DIM = INTEGER(maxDim)[0];
@@ -87,12 +127,18 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     params.CONST_SIZE_HIS = INTEGER(hisConstSize)[0];
     params.SAMPLING_HEURISTIC = INTEGER(sampleHeuristic)[0];
     params.SAMPLING_FACTOR = REAL(sampleFactor)[0];
-    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);
-    
-    LOG_INFO(log) << params;
-    
+    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);    
+    params.HIS_THR = INTEGER(hisThr)[0];    
+
     show_log = INTEGER(showLog)[0];
-    
+    cpplog::BaseLogger *log;
+    if (!show_log)
+        log = new cpplog::NullLogger();
+    else
+        log = new cpplog::FileLogger("/tmp/lmclus.log");
+
+    LOG_INFO(log) << params;
+
     // get dataset
     SEXP Rdim = getAttrib(Xs, R_DimSymbol);
     n = INTEGER(Rdim)[0];
@@ -101,78 +147,110 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     arma::mat data(REAL(Xs), n, m, false);
     Rprintf("Data dims: (%d, %d)\n", n, m);
 
-    if(params.MAX_DIM >= m){ 
-        Rprintf("Linear manifold dimension must be less than the dimension of the data !!!\n");
+    if (params.MAX_DIM >= m) {
+        Rprintf("Linear manifold dimension must be less than "
+                "the dimension of the data !!!\n");
         return R_NilValue;
     }
-    
+
     std::vector<arma::uvec> labels;
-    std::vector<double> thresholds; 
-    std::vector<arma::mat> bases; 
     std::vector<int> clusterDims;
-    std::vector<arma::vec> origins;
-    
-    clustering::lmclus::LMCLUS lmclus(&log); 
-    lmclus.cluster(data, params, labels, thresholds, bases, clusterDims, origins, output_callback);
-    if (show_log)
-        Rprintf("%s", log.getString().c_str());
-    
+    std::vector<clustering::lmclus::Separation> separations;
+
+    clustering::lmclus::LMCLUS lmclus(log);
+    lmclus.cluster(data, params, labels, clusterDims, separations, output_callback);
+
     Rprintf("Clusters found: %d\n", labels.size());
-    
-    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, Rbases, Rorigins;
-    
+
+    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, 
+        Rbases, Rorigins, Rhistograms, Rhmins, Rdistances;
+
      // Thresholds
-    PROTECT(Rthresholds = allocVector(REALSXP,thresholds.size())); nprotect++;
-    for (i = 0; i < thresholds.size(); ++i)
-        REAL(Rthresholds)[i] = thresholds[i];
-    
+    PROTECT(Rthresholds = allocVector(REALSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i)
+        REAL(Rthresholds)[i] = separations[i].get_threshold();
+
     // Dimensions
-    PROTECT(RclusterDims = allocVector(INTSXP,thresholds.size())); nprotect++;
+    PROTECT(RclusterDims = allocVector(INTSXP, clusterDims.size())); nprotect++;
     for (i = 0; i < clusterDims.size(); ++i)
       INTEGER(RclusterDims)[i] = clusterDims[i];
-    
-    // Labels
-    PROTECT(Rlabels = allocVector(VECSXP,labels.size())); nprotect++;
-    for (i = 0; i < labels.size(); ++i){
+
+    // Labels    
+    PROTECT(Rlabels = allocVector(VECSXP, labels.size())); nprotect++;
+    for (i = 0; i < labels.size(); ++i) {
+        labels[i] += 1; // adjust indexes
         SEXP lbls;
-        PROTECT(lbls = allocVector(INTSXP,labels[i].n_elem)); nprotect++;
+        PROTECT(lbls = allocVector(INTSXP, labels[i].n_elem)); nprotect++;
         for (j = 0; j < labels[i].n_elem; ++j)
             INTEGER(lbls)[j] = labels[i][j];
         SET_VECTOR_ELT(Rlabels, i, lbls);
     }
-    
+
     // Bases
-    PROTECT(Rbases = allocVector(VECSXP,bases.size())); nprotect++;
-    for (i = 0; i < bases.size(); ++i){
-        size_t r = bases[i].n_rows, c = bases[i].n_cols;
+    PROTECT(Rbases = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::mat basis = separations[i].get_projection();
+        unsigned int r = basis.n_rows, c = basis.n_cols;
+
         SEXP bss;
-        PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;        
+        PROTECT(bss = allocMatrix(REALSXP, r, c)); nprotect++;
         for (j = 0; j < r; ++j)
             for (k = 0; k < c; ++k)
-                REAL(bss)[j+r*k] = bases[i].at(j, k);
+                REAL(bss)[j+r*k] = basis.at(j, k);
         SET_VECTOR_ELT(Rbases, i, bss);
     }
-    
+
     // Origins
-    PROTECT(Rorigins = allocVector(VECSXP,origins.size())); nprotect++;
-    for (i = 0; i < origins.size(); ++i){
+    PROTECT(Rorigins = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::rowvec origin = separations[i].get_origin();
         SEXP orgn;
-        PROTECT(orgn = allocVector(REALSXP, origins[i].n_elem)); nprotect++;
-        for (j = 0; j < origins[i].n_elem; ++j)
-            REAL(orgn)[j] = origins[i][j];
+        PROTECT(orgn = allocVector(REALSXP, origin.n_elem)); nprotect++;
+        for (j = 0; j < origin.n_elem; ++j)
+            REAL(orgn)[j] = origin[j];
         SET_VECTOR_ELT(Rorigins, i, orgn);
     }
-    
+
+    // Distance histogram
+    PROTECT(Rhistograms = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::vec histogram = separations[i].get_histogram();
+        SEXP hist;
+        PROTECT(hist = allocVector(REALSXP, histogram.n_elem)); nprotect++;
+        for (j = 0; j < histogram.n_elem; ++j)
+            REAL(hist)[j] = histogram[j];
+        SET_VECTOR_ELT(Rhistograms, i, hist);
+    }
+
+    // Histogram distances
+    PROTECT(Rdistances = allocVector(VECSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i) {
+        arma::vec distances = separations[i].get_distances();
+        SEXP dist;
+        PROTECT(dist = allocVector(REALSXP, distances.n_elem)); nprotect++;
+        for (j = 0; j < distances.n_elem; ++j)
+            REAL(dist)[j] = distances[j];
+        SET_VECTOR_ELT(Rdistances, i, dist);
+    }
+
+    // Histogram minimum
+    PROTECT(Rhmins = allocVector(INTSXP, separations.size())); nprotect++;
+    for (i = 0; i < separations.size(); ++i)
+      INTEGER(Rhmins)[i] = separations[i].get_global_min();
+
     // Result list
-    PROTECT(Return_lst = allocVector(VECSXP,5)); nprotect++;
-    
+    PROTECT(Return_lst = allocVector(VECSXP, 8)); nprotect++;
+
     /* set names */
-    PROTECT(Rnames = NEW_CHARACTER(5)); nprotect++;
+    PROTECT(Rnames = NEW_CHARACTER(8)); nprotect++;
     SET_STRING_ELT(Rnames, 0, mkChar("thresholds"));
     SET_STRING_ELT(Rnames, 1, mkChar("cluster_dimensions"));
     SET_STRING_ELT(Rnames, 2, mkChar("clusters"));
     SET_STRING_ELT(Rnames, 3, mkChar("bases"));
     SET_STRING_ELT(Rnames, 4, mkChar("origins"));
+    SET_STRING_ELT(Rnames, 5, mkChar("histograms"));
+    SET_STRING_ELT(Rnames, 6, mkChar("global_mins"));
+    SET_STRING_ELT(Rnames, 7, mkChar("distances"));
     SET_NAMES(Return_lst, Rnames);
 
     /* set values */
@@ -181,13 +259,18 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     SET_VECTOR_ELT(Return_lst, 2, Rlabels);
     SET_VECTOR_ELT(Return_lst, 3, Rbases);
     SET_VECTOR_ELT(Return_lst, 4, Rorigins);
-    
-    UNPROTECT(nprotect);
-    return Return_lst;
+    SET_VECTOR_ELT(Return_lst, 5, Rhistograms);
+    SET_VECTOR_ELT(Return_lst, 6, Rhmins);
+    SET_VECTOR_ELT(Return_lst, 7, Rdistances);
 
-    } catch(...) { 
-        Rprintf("Log:\n%s", log.getString().c_str());
-        ::Rf_error( "c++ exception (unknown reason)" ); 
+    UNPROTECT(nprotect);
+
+    // Clear log
+    delete log;
+
+    return Return_lst;
+    } catch(...) {        
+        ::Rf_error("c++ exception (unknown reason)");
     }
     return R_NilValue;
 }

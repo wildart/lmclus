@@ -98,6 +98,7 @@ int main ( int argc, char *argv[] )
     params.SAMPLING_FACTOR = ini.GetDoubleValue(SECTION, "SAMPLING_FACTOR", 0.003);
     params.HIS_SAMPLING = ini.GetBoolValue(SECTION, "HIS_SAMPLING", false);
     params.SAVE_RESULT = ini.GetBoolValue(SECTION, "SAVE_RESULT", false);
+    params.HIS_THR = static_cast<unsigned int>(ini.GetLongValue(SECTION, "HIS_THR", 15));
     
     // Load dataset
     arma::mat data;
@@ -127,11 +128,9 @@ int main ( int argc, char *argv[] )
     // Process data
     clustering::lmclus::LMCLUS lmclus(log);
     std::vector<arma::uvec> labels;
-    std::vector<double> thresholds; 
-    std::vector<arma::mat> basises; 
     std::vector<int> clusterDims;
-    std::vector<arma::vec> origins;
-    lmclus.cluster(data, params, labels, thresholds, basises, clusterDims, origins, progress);
+    std::vector<clustering::lmclus::Separation> separations;
+    lmclus.cluster(data, params, labels, clusterDims, separations, progress);
     
     // Process results
     size_t clusterNum = labels.size();
@@ -140,12 +139,11 @@ int main ( int argc, char *argv[] )
     {
         LOG_INFO(log) << "Cluster " << i << " dimension: " << clusterDims[i] << ", size: " << labels[i].n_elem <<"\n";
         //LOG_INFO(log) << "Labels: " << labels[i].t();
-        LOG_INFO(log) << "Basis: \n"<< basises[i];
+        LOG_INFO(log) << "Basis: \n"<< separations[i].get_projection();
     }
     
     LOG_INFO(log) << "labels found: " << labels.size();
-    LOG_INFO(log) << "thresholds found: " << thresholds.size();
-    LOG_INFO(log) << "basises found: " << basises.size();
+    LOG_INFO(log) << "separations found: " << separations.size();
     LOG_INFO(log) << "clusterDims found: " << clusterDims.size();
     
     // Clear log
