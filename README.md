@@ -1,31 +1,34 @@
 LMCLUS
 ======
 
-LMCLUS is a linear manifold clustering algorithm, developed by Rave Harpaz. 
+LMCLUS is a linear manifold clustering algorithm, developed by Rave Harpaz.
 Current repository contains LMCLUS C++ library and R extensions.
 
 Installation
 ============
 
-To use lmclus you do not need to recompile the LMCLUS shared library. If you only want to create R extensions then 
-    
-    $ git clone https://github.com/wildart/lmclus.git
+Clone this repository
+
+	$ git clone https://github.com/wildart/lmclus.git
+
+For building R extensions package, run following command:
+
     $ R CMD INSTALL lmclus
 
-The LMCLUS shared object is built via CMake (www.cmake.org). To build from the command line:
+For building LMCLUS as shared library, CMake (www.cmake.org) need to be installed. Build from the command line:
 
     $ cd lmclus
-    $ cmake .
+    $ mkdir build
+    $ cd build
+    $ cmake -DCMAKE_BUILD_TYPE=Release ..
     $ make
     $ make test
-  
 
 Dependencies
 ------------
 
 * gcc (>= 4.7.2)
-* R (>= 2.15.0)
-* BLAS (or MKL optional)
+* R (>= 2.15.0) or BLAS (or MKL optional)
 
 Licence
 =======
