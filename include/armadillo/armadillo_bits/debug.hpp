@@ -93,7 +93,7 @@ static
 void
 arma_stop(const T1& x)
   {
-  #if defined(ARMA_PRINT_LOGIC_ERRORS)
+  #if defined(ARMA_PRINT_ERRORS)
     {
     std::ostream& out = get_stream_err1();
     
@@ -110,7 +110,7 @@ arma_stop(const T1& x)
     }
   #endif
   
-  throw std::logic_error("");
+  throw std::logic_error( std::string(x) );
   }
 
 
@@ -122,14 +122,22 @@ static
 void
 arma_stop_bad_alloc(const T1& x)
   {
-  std::ostream& out = get_stream_err1();
-  
-  out.flush();
-  
-  out << '\n';
-  out << "error: " << x << '\n';
-  out << '\n';
-  out.flush();
+  #if defined(ARMA_PRINT_ERRORS)
+    {
+    std::ostream& out = get_stream_err2();
+    
+    out.flush();
+    
+    out << '\n';
+    out << "error: " << x << '\n';
+    out << '\n';
+    out.flush();
+    }
+  #else
+    {
+    arma_ignore(x);
+    }
+  #endif
   
   throw std::bad_alloc();
   }
@@ -147,7 +155,7 @@ static
 void
 arma_bad(const T1& x, const bool hurl = true)
   {
-  #if defined(ARMA_PRINT_RUNTIME_ERRORS)
+  #if defined(ARMA_PRINT_ERRORS)
     {
     std::ostream& out = get_stream_err2();
     
@@ -166,7 +174,7 @@ arma_bad(const T1& x, const bool hurl = true)
   
   if(hurl == true)
     {
-    throw std::runtime_error("");
+    throw std::runtime_error( std::string(x) );
     }
   }
 
@@ -441,7 +449,7 @@ arma_incompat_size_string(const subview_cube<eT>& Q, const Mat<eT>& A, const cha
   std::stringstream tmp;
   
   tmp << x
-      << ": interpreting matrix as cube with dimenensions: "
+      << ": interpreting matrix as cube with dimensions: "
       << A.n_rows << 'x' << A.n_cols << 'x' << 1
       << " or "
       << A.n_rows << 'x' << 1        << 'x' << A.n_cols
@@ -905,7 +913,7 @@ arma_assert_cube_as_mat(const Mat<eT>& M, const T1& Q, const char* x, const bool
         std::stringstream tmp;
         
         tmp << x
-            << ": can't interpret cube with dimenensions "
+            << ": can't interpret cube with dimensions "
             << Q_n_rows << 'x' << Q_n_cols << 'x' << Q_n_slices
             << " as a matrix with dimensions "
             << M_n_rows << 'x' << M_n_cols;
@@ -1092,18 +1100,7 @@ arma_assert_mul_size(const subview<eT1>& A, const subview<eT2>& B, const char* x
 // #define ARMA_FILELINE  __FILE__ ": " ARMA_STRING2(__LINE__)
 
 
-#if !defined(ARMA_NO_DEBUG) && !defined(NDEBUG)
-  
-  #define arma_debug_print                 arma_print
-  #define arma_debug_warn                  arma_warn
-  #define arma_debug_check                 arma_check
-  #define arma_debug_set_error             arma_set_error
-  #define arma_debug_assert_same_size      arma_assert_same_size
-  #define arma_debug_assert_mul_size       arma_assert_mul_size
-  #define arma_debug_assert_trans_mul_size arma_assert_trans_mul_size
-  #define arma_debug_assert_cube_as_mat    arma_assert_cube_as_mat
-  
-#else
+#if defined(ARMA_NO_DEBUG)
   
   #undef ARMA_EXTRA_DEBUG
   
@@ -1115,7 +1112,18 @@ arma_assert_mul_size(const subview<eT1>& A, const subview<eT2>& B, const char* x
   #define arma_debug_assert_mul_size       true ? (void)0 : arma_assert_mul_size
   #define arma_debug_assert_trans_mul_size true ? (void)0 : arma_assert_trans_mul_size
   #define arma_debug_assert_cube_as_mat    true ? (void)0 : arma_assert_cube_as_mat
-
+  
+#else
+  
+  #define arma_debug_print                 arma_print
+  #define arma_debug_warn                  arma_warn
+  #define arma_debug_check                 arma_check
+  #define arma_debug_set_error             arma_set_error
+  #define arma_debug_assert_same_size      arma_assert_same_size
+  #define arma_debug_assert_mul_size       arma_assert_mul_size
+  #define arma_debug_assert_trans_mul_size arma_assert_trans_mul_size
+  #define arma_debug_assert_cube_as_mat    arma_assert_cube_as_mat
+  
 #endif
 
 
@@ -1170,15 +1178,16 @@ arma_assert_mul_size(const subview<eT1>& A, const subview<eT2>& B, const char* x
             << arma_version::major << '.' << arma_version::minor << '.' << arma_version::patch
             << " (" << nickname << ")\n";
         
-        out << "@ arma_config::mat_prealloc   = " << arma_config::mat_prealloc   << " element(s)\n";
-        out << "@ arma_config::atlas          = " << arma_config::atlas          << '\n';
-        out << "@ arma_config::lapack         = " << arma_config::lapack         << '\n';
-        out << "@ arma_config::blas           = " << arma_config::blas           << '\n';
-        out << "@ arma_config::boost          = " << arma_config::boost          << '\n';
-        out << "@ arma_config::boost_date     = " << arma_config::boost_date     << '\n';
-        out << "@ arma_config::good_comp      = " << arma_config::good_comp      << '\n';
-        out << "@ arma_config::extra_code     = " << arma_config::extra_code     << '\n';
-        out << "@ arma_config::use_cxx11      = " << arma_config::use_cxx11      << '\n';
+        out << "@ arma_config::use_wrapper  = " << arma_config::use_wrapper  << '\n';
+        out << "@ arma_config::use_cxx11    = " << arma_config::use_cxx11    << '\n';
+        out << "@ arma_config::lapack       = " << arma_config::lapack       << '\n';
+        out << "@ arma_config::blas         = " << arma_config::blas         << '\n';
+        out << "@ arma_config::arpack       = " << arma_config::arpack       << '\n';
+        out << "@ arma_config::atlas        = " << arma_config::atlas        << '\n';
+        out << "@ arma_config::hdf5         = " << arma_config::hdf5         << '\n';
+        out << "@ arma_config::good_comp    = " << arma_config::good_comp    << '\n';
+        out << "@ arma_config::extra_code   = " << arma_config::extra_code   << '\n';
+        out << "@ arma_config::mat_prealloc = " << arma_config::mat_prealloc << '\n';
         out << "@ sizeof(void*)    = " << sizeof(void*)    << '\n';
         out << "@ sizeof(uword)    = " << sizeof(uword)    << '\n';
         out << "@ sizeof(int)      = " << sizeof(int)      << '\n';

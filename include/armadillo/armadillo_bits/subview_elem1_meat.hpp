@@ -30,6 +30,18 @@ subview_elem1<eT,T1>::subview_elem1(const Mat<eT>& in_m, const Base<uword,T1>& i
 
 
 template<typename eT, typename T1>
+arma_inline
+subview_elem1<eT,T1>::subview_elem1(const Cube<eT>& in_q, const Base<uword,T1>& in_a)
+  : fake_m( const_cast< eT* >(in_q.memptr()), in_q.n_elem, 1, false )
+  ,      m( fake_m )
+  ,      a( in_a   )
+  {
+  arma_extra_debug_sigprint();
+  }
+
+
+
+template<typename eT, typename T1>
 template<typename op_type>
 inline
 void
@@ -353,6 +365,104 @@ subview_elem1<eT,T1>::ones()
   arma_extra_debug_sigprint();
   
   inplace_op<op_subview_elem_equ>(eT(1));
+  }
+
+
+
+template<typename eT, typename T1>
+inline
+void
+subview_elem1<eT,T1>::randu()
+  {
+  arma_extra_debug_sigprint();
+  
+  Mat<eT>& m_local = const_cast< Mat<eT>& >(m);
+  
+        eT*   m_mem    = m_local.memptr();
+  const uword m_n_elem = m_local.n_elem;
+  
+  const unwrap_check_mixed<T1> tmp(a.get_ref(), m_local);
+  const umat& aa = tmp.M;
+  
+  arma_debug_check
+    (
+    ( (aa.is_vec() == false) && (aa.is_empty() == false) ),
+    "Mat::elem(): given object is not a vector"
+    );
+  
+  const uword* aa_mem    = aa.memptr();
+  const uword  aa_n_elem = aa.n_elem;
+  
+  uword iq,jq;
+  for(iq=0, jq=1; jq < aa_n_elem; iq+=2, jq+=2)
+    {
+    const uword ii = aa_mem[iq];
+    const uword jj = aa_mem[jq];
+    
+    arma_debug_check( ( (ii >= m_n_elem) || (jj >= m_n_elem) ), "Mat::elem(): index out of bounds" );
+    
+    const eT val1 = eT(arma_rng::randu<eT>());
+    const eT val2 = eT(arma_rng::randu<eT>());
+    
+    m_mem[ii] = val1;
+    m_mem[jj] = val2;
+    }
+  
+  if(iq < aa_n_elem)
+    {
+    const uword ii = aa_mem[iq];
+    
+    arma_debug_check( (ii >= m_n_elem) , "Mat::elem(): index out of bounds" ); 
+    
+    m_mem[ii] = eT(arma_rng::randu<eT>());
+    }
+  }
+
+
+
+template<typename eT, typename T1>
+inline
+void
+subview_elem1<eT,T1>::randn()
+  {
+  arma_extra_debug_sigprint();
+  
+  Mat<eT>& m_local = const_cast< Mat<eT>& >(m);
+  
+        eT*   m_mem    = m_local.memptr();
+  const uword m_n_elem = m_local.n_elem;
+  
+  const unwrap_check_mixed<T1> tmp(a.get_ref(), m_local);
+  const umat& aa = tmp.M;
+  
+  arma_debug_check
+    (
+    ( (aa.is_vec() == false) && (aa.is_empty() == false) ),
+    "Mat::elem(): given object is not a vector"
+    );
+  
+  const uword* aa_mem    = aa.memptr();
+  const uword  aa_n_elem = aa.n_elem;
+  
+  uword iq,jq;
+  for(iq=0, jq=1; jq < aa_n_elem; iq+=2, jq+=2)
+    {
+    const uword ii = aa_mem[iq];
+    const uword jj = aa_mem[jq];
+    
+    arma_debug_check( ( (ii >= m_n_elem) || (jj >= m_n_elem) ), "Mat::elem(): index out of bounds" );
+    
+    arma_rng::randn<eT>::dual_val( m_mem[ii], m_mem[jj] );
+    }
+  
+  if(iq < aa_n_elem)
+    {
+    const uword ii = aa_mem[iq];
+    
+    arma_debug_check( (ii >= m_n_elem) , "Mat::elem(): index out of bounds" ); 
+    
+    m_mem[ii] = eT(arma_rng::randn<eT>());
+    }
   }
 
 

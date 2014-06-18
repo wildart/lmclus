@@ -1,5 +1,5 @@
-// Copyright (C) 2008-2013 Conrad Sanderson
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
+// Copyright (C) 2008-2014 Conrad Sanderson
+// Copyright (C) 2008-2014 NICTA (www.nicta.com.au)
 // 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,6 +10,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::ios;
+using std::size_t;
 
 template<typename elem_type, typename derived> struct Base;
 template<typename elem_type, typename derived> struct BaseCube;
@@ -43,6 +44,8 @@ template<typename eT, typename T1, typename T2> class subview_elem2;
 template<typename parent, unsigned int mode>              class subview_each1;
 template<typename parent, unsigned int mode, typename TB> class subview_each2;
 
+class SizeMat;
+class SizeCube;
 
 class arma_empty_class {};
 
@@ -61,6 +64,8 @@ class op_diagmat;
 class op_trimat;
 class op_diagvec;
 class op_vectorise_col;
+class op_normalise_colvec;
+class op_normalise_rowvec;
 
 class eop_conj;
 
@@ -73,6 +78,8 @@ class glue_rel_lteq;
 class glue_rel_gteq;
 class glue_rel_eq;
 class glue_rel_noteq;
+class glue_rel_and;
+class glue_rel_or;
 
 class op_rel_lt_pre;
 class op_rel_lt_post;

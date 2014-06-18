@@ -1,5 +1,5 @@
-// Copyright (C) 2008-2012 Conrad Sanderson
-// Copyright (C) 2008-2012 NICTA (www.nicta.com.au)
+// Copyright (C) 2008-2014 Conrad Sanderson
+// Copyright (C) 2008-2014 NICTA (www.nicta.com.au)
 // Copyright (C) 2012 Ryan Curtin
 // 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -56,7 +56,7 @@ dot
 
 
 template<typename T1, typename T2>
-arma_inline
+inline
 arma_warn_unused
 typename
 enable_if2

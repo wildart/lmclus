@@ -1,5 +1,5 @@
-// Copyright (C) 2008-2013 Conrad Sanderson
-// Copyright (C) 2008-2013 NICTA (www.nicta.com.au)
+// Copyright (C) 2008-2014 Conrad Sanderson
+// Copyright (C) 2008-2014 NICTA (www.nicta.com.au)
 // Copyright (C) 2012 Ryan Curtin
 // 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -189,12 +189,17 @@ class Mat : public Base< eT, Mat<eT> >
   arma_inline       subview<eT> submat(const uword in_row1, const uword in_col1, const uword in_row2, const uword in_col2);
   arma_inline const subview<eT> submat(const uword in_row1, const uword in_col1, const uword in_row2, const uword in_col2) const;
   
+  arma_inline       subview<eT> submat(const uword in_row1, const uword in_col1, const SizeMat& s);
+  arma_inline const subview<eT> submat(const uword in_row1, const uword in_col1, const SizeMat& s) const;
+  
   inline            subview<eT> submat    (const span& row_span, const span& col_span);
   inline      const subview<eT> submat    (const span& row_span, const span& col_span) const;
   
   inline            subview<eT> operator()(const span& row_span, const span& col_span);
   inline      const subview<eT> operator()(const span& row_span, const span& col_span) const;
   
+  inline            subview<eT> operator()(const uword in_row1, const uword in_col1, const SizeMat& s);
+  inline      const subview<eT> operator()(const uword in_row1, const uword in_col1, const SizeMat& s) const;
   
   template<typename T1> arma_inline       subview_elem1<eT,T1> elem(const Base<uword,T1>& a);
   template<typename T1> arma_inline const subview_elem1<eT,T1> elem(const Base<uword,T1>& a) const;
@@ -341,6 +346,8 @@ class Mat : public Base< eT, Mat<eT> >
   arma_inline arma_warn_unused bool in_range(const uword   in_row, const span& col_span) const;
   arma_inline arma_warn_unused bool in_range(const span& row_span, const span& col_span) const;
   
+  arma_inline arma_warn_unused bool in_range(const uword in_row, const uword in_col, const SizeMat& s) const;
+  
   arma_inline arma_warn_unused       eT* colptr(const uword in_col);
   arma_inline arma_warn_unused const eT* colptr(const uword in_col) const;
   
@@ -363,6 +370,7 @@ class Mat : public Base< eT, Mat<eT> >
   
   inline void   resize(const uword in_elem);
   inline void   resize(const uword in_rows, const uword in_cols);
+  
   inline void  reshape(const uword in_rows, const uword in_cols, const uword dim = 0);
   
   
@@ -511,6 +519,9 @@ class Mat : public Base< eT, Mat<eT> >
   inline void swap(Mat& B);
   
   inline void steal_mem(Mat& X);  //!< don't use this unless you're writing code internal to Armadillo
+  
+  inline void steal_mem_col(Mat& X, const uword max_n_rows);
+  
   
   template<uword fixed_n_rows, uword fixed_n_cols> class fixed;
   

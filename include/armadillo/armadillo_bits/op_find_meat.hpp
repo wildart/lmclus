@@ -1,5 +1,5 @@
-// Copyright (C) 2010-2013 Conrad Sanderson
-// Copyright (C) 2010-2013 NICTA (www.nicta.com.au)
+// Copyright (C) 2010-2014 Conrad Sanderson
+// Copyright (C) 2010-2014 NICTA (www.nicta.com.au)
 // Copyright (C) 2010 Dimitrios Bouzas
 // 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -222,17 +222,44 @@ op_find::helper
   uword* indices_mem = indices.memptr();
   uword  n_nz        = 0;
   
-  for(uword i=0; i<n_elem; ++i)
+  
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    const eT tmp = PA[i];
+    for(uword i=0; i<n_elem; ++i)
+      {
+      const eT tmp = PA[i];
+      
+      bool not_zero;
+      
+           if(is_same_type<op_type, op_rel_eq   >::yes)  { not_zero = (tmp == val); }
+      else if(is_same_type<op_type, op_rel_noteq>::yes)  { not_zero = (tmp != val); }
+      else not_zero = false;
+      
+      if(not_zero == true) { indices_mem[n_nz] = i;  ++n_nz; }
+      }
+    }
+  else
+    {
+    const uword n_rows = A.get_n_rows();
+    const uword n_cols = A.get_n_cols();
     
-    bool not_zero;
+    uword i = 0;
     
-         if(is_same_type<op_type, op_rel_eq   >::yes)  { not_zero = (tmp == val); }
-    else if(is_same_type<op_type, op_rel_noteq>::yes)  { not_zero = (tmp != val); }
-    else not_zero = false;
-    
-    if(not_zero == true) { indices_mem[n_nz] = i;  ++n_nz; }
+    for(uword col=0; col<n_cols; ++col)
+    for(uword row=0; row<n_rows; ++row)
+      {
+      const eT tmp = A.at(row,col);
+      
+      bool not_zero;
+      
+           if(is_same_type<op_type, op_rel_eq   >::yes)  { not_zero = (tmp == val); }
+      else if(is_same_type<op_type, op_rel_noteq>::yes)  { not_zero = (tmp != val); }
+      else not_zero = false;
+      
+      if(not_zero == true) { indices_mem[n_nz] = i;  ++n_nz; }
+      
+      i++;
+      }
     }
   
   return n_nz;
@@ -291,6 +318,8 @@ op_find::helper
     else if(is_same_type<glue_type, glue_rel_gteq  >::yes)  { not_zero = (tmp1 >= tmp2); }
     else if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (tmp1 == tmp2); }
     else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (tmp1 != tmp2); }
+    else if(is_same_type<glue_type, glue_rel_and   >::yes)  { not_zero = (tmp1 && tmp2); }
+    else if(is_same_type<glue_type, glue_rel_or    >::yes)  { not_zero = (tmp1 || tmp2); }
     else not_zero = false;
     
     if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
@@ -336,16 +365,41 @@ op_find::helper
   uword* indices_mem = indices.memptr();
   uword  n_nz        = 0;
   
-  for(uword i=0; i<n_elem; ++i)
+  
+  if(Proxy<T1>::prefer_at_accessor == false)
     {
-    bool not_zero;
-    
-         if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (PA[i] == PB[i]); }
-    else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (PA[i] != PB[i]); }
-    else not_zero = false;
-    
-    if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+    for(uword i=0; i<n_elem; ++i)
+      {
+      bool not_zero;
+      
+           if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (PA[i] == PB[i]); }
+      else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (PA[i] != PB[i]); }
+      else not_zero = false;
+      
+      if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+      }
     }
+  else
+    {
+    const uword n_rows = A.get_n_rows();
+    const uword n_cols = A.get_n_cols();
+    
+    uword i = 0;
+    
+    for(uword col=0; col<n_cols; ++col)
+    for(uword row=0; row<n_rows; ++row)
+      {
+      bool not_zero;
+      
+           if(is_same_type<glue_type, glue_rel_eq    >::yes)  { not_zero = (A.at(row,col) == B.at(row,col)); }
+      else if(is_same_type<glue_type, glue_rel_noteq >::yes)  { not_zero = (A.at(row,col) != B.at(row,col)); }
+      else not_zero = false;
+      
+      if(not_zero == true)  { indices_mem[n_nz] = i;  ++n_nz; }
+      
+      i++;
+      }
+   }
   
   return n_nz;
   }
@@ -380,6 +434,121 @@ op_find::apply(Mat<uword>& out, const mtOp<uword, T1, op_find>& X)
     {
     out.set_size(0,1);  // empty column vector
     }
+  }
+
+
+
+//
+
+
+
+template<typename T1>
+inline
+void
+op_find_simple::apply(Mat<uword>& out, const mtOp<uword, T1, op_find_simple>& X)
+  {
+  arma_extra_debug_sigprint();
+  
+  Mat<uword> indices;
+  const uword n_nz = op_find::helper(indices, X.m);
+  
+  out.steal_mem_col(indices, n_nz);
+  }
+
+
+
+//
+
+
+
+template<typename T1>
+inline
+void
+op_find_finite::apply(Mat<uword>& out, const mtOp<uword, T1, op_find_finite>& X)
+  {
+  arma_extra_debug_sigprint();
+  
+  const Proxy<T1> P(X.m);
+  
+  const uword n_elem = P.get_n_elem();
+  
+  Mat<uword> indices(n_elem,1);
+  
+  uword* indices_mem = indices.memptr();
+  uword  count       = 0;
+  
+  if(Proxy<T1>::prefer_at_accessor == false)
+    {
+    const typename Proxy<T1>::ea_type Pea = P.get_ea();
+    
+    for(uword i=0; i<n_elem; ++i)
+      {
+      if( arma_isfinite(Pea[i]) )  { indices_mem[count] = i; count++; }
+      }
+    }
+  else
+    {
+    const uword n_rows = P.get_n_rows(); 
+    const uword n_cols = P.get_n_cols(); 
+    
+    uword i = 0;
+    
+    for(uword col=0; col<n_cols; ++col)
+    for(uword row=0; row<n_rows; ++row)
+      {
+      if( arma_isfinite(P.at(row,col)) )  { indices_mem[count] = i; count++; }
+      
+      i++;
+      }
+    }
+  
+  out.steal_mem_col(indices, count);
+  }
+
+
+
+template<typename T1>
+inline
+void
+op_find_nonfinite::apply(Mat<uword>& out, const mtOp<uword, T1, op_find_nonfinite>& X)
+  {
+  arma_extra_debug_sigprint();
+  
+  const Proxy<T1> P(X.m);
+  
+  const uword n_elem = P.get_n_elem();
+  
+  Mat<uword> indices(n_elem,1);
+  
+  uword* indices_mem = indices.memptr();
+  uword  count       = 0;
+  
+  if(Proxy<T1>::prefer_at_accessor == false)
+    {
+    const typename Proxy<T1>::ea_type Pea = P.get_ea();
+    
+    for(uword i=0; i<n_elem; ++i)
+      {
+      if( arma_isfinite(Pea[i]) == false )  { indices_mem[count] = i; count++; }
+      }
+    }
+  else
+    {
+    const uword n_rows = P.get_n_rows(); 
+    const uword n_cols = P.get_n_cols(); 
+    
+    uword i = 0;
+    
+    for(uword col=0; col<n_cols; ++col)
+    for(uword row=0; row<n_rows; ++row)
+      {
+      if( arma_isfinite(P.at(row,col)) == false )  { indices_mem[count] = i; count++; }
+      
+      i++;
+      }
+    }
+  
+  out.steal_mem_col(indices, count);
   }
 
 
