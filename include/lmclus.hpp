@@ -2,10 +2,10 @@
   * * TITLE:        lmclus.hpp
   * *
   * * PURPOSE:      A linear manifold clustering algorithm based on the paper
-  * *               "Linear manifold clustering in high dimensional spaces by stochastic search", 
+  * *               "Linear manifold clustering in high dimensional spaces by stochastic search",
   * *                Pattern Recognition (2007), vol. 40(10), pp 2672-2684.
   * *
-  * * AUTHOR:       Rave Harpaz 
+  * * AUTHOR:       Rave Harpaz
   * *               Pattern Recognition Laboratory
   * *               Department of Computer Science
   * *               The Graduate Center
@@ -22,8 +22,8 @@
   * *
   * * COMPILER:     gcc/g++ compiler version 4.0.3
   * *
-  * * REFERENCES:   Rave Harpaz and Robert Haralick, 
-  * *               "Linear manifold clustering in high dimensional spaces by stochastic search", 
+  * * REFERENCES:   Rave Harpaz and Robert Haralick,
+  * *               "Linear manifold clustering in high dimensional spaces by stochastic search",
   * *               Pattern Recognition (2007), vol. 40(10), pp 2672-2684.
   * *
   * * REVISIONS:    Art Diky
@@ -40,8 +40,10 @@
 
 #include "Kittler.hpp"
 
-#define CPPLOG_FILTER_LEVEL 2
+#define CPPLOG_FILTER_LEVEL 1
 #include "cpplog.hpp"
+
+using namespace std;
 
 namespace clustering {
 namespace lmclus {
@@ -85,29 +87,37 @@ public:
 		return distances;
 	}
 
+  void set_projection(const arma::mat &b) {
+    projection = arma::mat(b);
+  }
+
+  void set_origin(const arma::rowvec &o) {
+    origin = arma::mat(o);
+  }
+
 	Separation(double w, double d, double thres, const arma::rowvec &org,
 	    const arma::mat &p, const arma::vec &h, unsigned int gm, const arma::vec &dist
 	    ):
-	    origin(org), projection(p), sep_width(w), sep_depth(d), 
+	    origin(org), projection(p), sep_width(w), sep_depth(d),
 	    threshold(thres), global_min(gm), histogram(h), distances(dist)
 	{
       criteria=sep_width*sep_depth;
 	}
 
-	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0), 
+	Separation (): origin(1), projection(1,1), sep_width(0), sep_depth(0),
 	    threshold(0), global_min(0), criteria(-1)
   {
 	    distances = arma::zeros(0);
   }
-	
-	Separation (int dim): sep_width(0.), sep_depth(0.), 
-	    threshold(0.), global_min(0.), histogram(1), criteria(-1) 
+
+	Separation (int dim): sep_width(0.), sep_depth(0.),
+	    threshold(0.), global_min(0.), histogram(1), criteria(-1)
   {
 	    origin = arma::zeros(dim);
 	    projection = arma::zeros(1,dim);
 	    distances = arma::zeros(0);
 	}
-		
+
 	virtual ~Separation () {};
 
 private:
@@ -134,16 +144,18 @@ struct Parameters
     int CONST_SIZE_HIS;
     size_t NOISE_SIZE;
     double BEST_BOUND;
-    double ERROR_BOUND; 
+    double ERROR_BOUND;
     double MAX_BIN_PORTION;
-    
+
     unsigned long int RANDOM_SEED;
     int SAMPLING_HEURISTIC;
     double SAMPLING_FACTOR;
     bool HIS_SAMPLING;
-    bool SAVE_RESULT;
+
     size_t HIS_THR;
-    
+    bool ALIGN_BASIS;
+    bool ZEROD_SEARCH;
+
     friend std::ostream & operator<<(std::ostream &o, Parameters &p)
     {
         o<<"MAX_DIM="<<p.MAX_DIM<<std::endl;
@@ -158,9 +170,9 @@ struct Parameters
         o<<"SAMPLING_HEURISTIC="<<p.SAMPLING_HEURISTIC<<std::endl;
         o<<"SAMPLING_FACTOR="<<p.SAMPLING_FACTOR<<std::endl;
         o<<"HIS_SAMPLING="<<p.HIS_SAMPLING<<std::endl;
-        o<<"HIS_SAMPLING="<<p.HIS_THR<<std::endl;        
-        o<<"SAVE_RESULT="<<p.SAVE_RESULT<<std::endl;
-
+        o<<"HIS_THR="<<p.HIS_THR<<std::endl;
+        o<<"ALIGN_BASIS="<<p.ALIGN_BASIS<<std::endl;
+        o<<"ZEROD_SEARCH="<<p.ZEROD_SEARCH<<std::endl;
         return o;
     }
 
@@ -173,42 +185,42 @@ class LMCLUS
 private:
     LMCLUS(const LMCLUS& rhs) = delete;
     void operator=(const LMCLUS& rhs) = delete;
-    
+
     // sampling functions
     int sampleQuantity(int lmDim, int fullSpcDim, const int dataSize, const Parameters &para);
     arma::uvec samplePoints(const arma::mat &data, const int lmDim);
     arma::uvec sample(const int n, const int k);
 
-        
+
     // spearation detection functions
-    Separation findBestSeparation(const arma::mat &data, 
+    Separation findBestSeparation(const arma::mat &data,
         const int SubSpaceDim, const Parameters &para);
     Separation findBestZeroManifoldSeparation(
-        const arma::mat &data, const Parameters &para, 
+        const arma::mat &data, const Parameters &para,
         const Separation &sep);
-    
+
     arma::mat findBestPoints(const arma::mat &data, const Separation &sep, arma::mat &nonClusterPoints);
     arma::vec determineDistances(const arma::mat &data, const arma::mat &P, const arma::rowvec &origin, const Parameters &para);
-    
+
     unsigned int randromNumber();
-    
+
     cpplog::BaseLogger *log;
     bool logCreated;
     std::mt19937 engine;
     std::uniform_int_distribution<unsigned int> dist;
-    
+
 public:
     LMCLUS() : logCreated(true), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
     {
         // Setup logger
         log = new cpplog::StdErrLogger();
-    }    
-    
+    }
+
     LMCLUS(cpplog::BaseLogger *mlog) : logCreated(false), engine(std::random_device{}()), dist(std::uniform_int_distribution<unsigned int>())
     {
         log = mlog;
-    }    
-    
+    }
+
     ~LMCLUS()
     {
         if (logCreated)
@@ -231,11 +243,10 @@ public:
                  std::vector<arma::uvec> &labels, std::vector<int> &clusterDims,
                  std::vector<Separation> &separations,
                  callback_t progress = nullptr);
+
+    arma::vec histBootstrapping(const arma::vec &distances, size_t bins);
+    tuple<arma::mat, arma::vec> alignBasis(const arma::mat &data, const arma::uvec &labels, int d);
 };
-
-
-// Static functions
-arma::vec histBootstrapping(arma::vec distances, size_t bins);
 
 } // lmclus namespace
 } // clustering namespace

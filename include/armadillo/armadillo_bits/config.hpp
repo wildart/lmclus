@@ -66,7 +66,7 @@
 #endif
 
 #if !defined(ARMA_USE_CXX11)
-// #define ARMA_USE_CXX11
+#define ARMA_USE_CXX11
 //// Uncomment the above line if you have a C++ compiler that supports the C++11 standard
 //// This will enable additional features, such as use of initialiser lists
 #endif

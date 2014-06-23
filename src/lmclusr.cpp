@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc 4.7.2
  *
- *         Author:  Art Wild (wildart@gmail.com) 
+ *         Author:  Art Wild (wildart@gmail.com)
  *        Company:  Patter Recognition Lab, GC CUNY
  *
  * =====================================================================================
@@ -57,7 +57,7 @@ SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
     nH = AS_NUMERIC(nH);
     arma::vec hist(REAL(nH), n, false);
     double RHmin = REAL(minX)[0];
-    double RHmax = REAL(maxX)[0];    
+    double RHmax = REAL(maxX)[0];
 
     Kittler K;
     bool res = K.FindThreshold(hist, RHmin, RHmax);
@@ -108,7 +108,8 @@ SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
 
 SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound,
     SEXP errorBound, SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize,
-    SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog, SEXP hisThr) {
+    SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog,
+    SEXP hisThr, SEXP algnBasis, SEXP zdSearch) {
 
     Rprintf("Linear manifold clustering...\n");
     int n, m, show_log, nprotect = 0;
@@ -127,8 +128,10 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     params.CONST_SIZE_HIS = INTEGER(hisConstSize)[0];
     params.SAMPLING_HEURISTIC = INTEGER(sampleHeuristic)[0];
     params.SAMPLING_FACTOR = REAL(sampleFactor)[0];
-    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);    
-    params.HIS_THR = INTEGER(hisThr)[0];    
+    params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);
+    params.HIS_THR = INTEGER(hisThr)[0];
+    params.ALIGN_BASIS = INTEGER(algnBasis)[0];
+    params.ZEROD_SEARCH = INTEGER(zdSearch)[0];
 
     show_log = INTEGER(showLog)[0];
     cpplog::BaseLogger *log;
@@ -162,7 +165,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
 
     Rprintf("Clusters found: %d\n", labels.size());
 
-    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels, 
+    SEXP Return_lst, Rnames, Rthresholds, RclusterDims, Rlabels,
         Rbases, Rorigins, Rhistograms, Rhmins, Rdistances;
 
      // Thresholds
@@ -175,7 +178,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     for (i = 0; i < clusterDims.size(); ++i)
       INTEGER(RclusterDims)[i] = clusterDims[i];
 
-    // Labels    
+    // Labels
     PROTECT(Rlabels = allocVector(VECSXP, labels.size())); nprotect++;
     for (i = 0; i < labels.size(); ++i) {
         labels[i] += 1; // adjust indexes
@@ -269,7 +272,7 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     delete log;
 
     return Return_lst;
-    } catch(...) {        
+    } catch(...) {
         ::Rf_error("c++ exception (unknown reason)");
     }
     return R_NilValue;
