@@ -1,12 +1,12 @@
 #
-# Makevars for LMCLUS 
+# Makevars for LMCLUS
 #
 # Copyright (C) 2013 Art Diky
 
 # For windows Rtools 2.15.0 use gcc 4.7.x
-CLINK_CPPFLAGS=-std=c++11 -fopenmp
+CLINK_CPPFLAGS=-std=c++11 -fopenmp -DNDEBUG
 
-all: 	$(SHLIB) userLibrary 
+all: 	$(SHLIB) userLibrary
 
 ## we place it inside the inst/ directory so that it gets installed by the package
 USERDIR =	.
@@ -28,7 +28,7 @@ $(USERLIB): 	$(OBJECTS)
 		$(SHLIB_CXXLD) -o $(USERLIB) $(OBJECTS) $(SHLIB_CXXLDFLAGS) $(ALL_LIBS)
 		@if test -e "/usr/bin/install_name_tool"; then /usr/bin/install_name_tool -id $(R_PACKAGE_DIR)/lib$(R_ARCH)/$(USERLIB) $(USERLIB); fi
 
-.PHONY: 	all clean userLibrary 
+.PHONY: 	all clean userLibrary
 
 clean:
 		rm -f $(OBJECTS) $(SHLIB) $(USERLIB)

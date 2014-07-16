@@ -40,10 +40,9 @@
 #include <limits>
 #include <chrono>
 #include <iomanip>
+#include <cassert>
 
 #include "lmclus.hpp"
-
-#define EPS 1e-8
 
 /* Random number generator
  */
@@ -137,7 +136,7 @@ arma::uvec clustering::lmclus::LMCLUS::samplePoints(const arma::mat &data, const
             LOG_TRACE(log) << "Check points: " << selected_points[i] << " <-> " << point_index[pid];
             bool match = true;
             for(size_t j=0; j < data.n_cols; j++)
-                match = match && ((data(selected_points[i],j) - data(point_index[pid],j)) < EPS);
+                match = match && ((data(selected_points[i],j) - data(point_index[pid],j)) < arma::datum::eps);
             unique = unique && !match;
         }
 
@@ -391,18 +390,18 @@ clustering::lmclus::Separation clustering::lmclus::LMCLUS::findBestSeparation(
             continue;
 
         arma::vec histNorm;
-        if (histBins >= params.HIS_THR) {
+        if (histBins >= params.HIS_THR || params.HIS_THR == 0) {
         // Threshold histogram and determine goodness of separation
             histNorm = arma::conv_to< arma::vec >::from(hist) / static_cast<double>(distances.n_elem);
-            LOG_TRACE(log) << "Create histogram: \n" << histNorm.t();
         }
         // Calculate density function
         else {
-            LOG_TRACE(log) << "Start histogram bootstrapping...";
+            LOG_DEBUG(log) << "Start histogram bootstrapping...";
             histNorm = histBootstrapping(distances, params.HIS_THR);
             if ( histNorm.n_elem < 2)
                 continue;
         }
+        LOG_TRACE(log) << "Create histogram: \n" << histNorm.t();
 
         Kittler K;
         K.FindThreshold(histNorm, RHmin, RHmax);
@@ -470,7 +469,7 @@ clustering::lmclus::Separation
 
         arma::vec histNorm;
         // Build histogram for 0-dim manifold search
-        if (histBins >= params.HIS_THR) {
+        if (histBins >= params.HIS_THR || params.HIS_THR == 0) {
             // generate a distances histogram
             arma::uvec hist = arma::hist(distances, histBins);
 
@@ -492,6 +491,7 @@ clustering::lmclus::Separation
 
             origin = data.row(point_idx);
         }
+        LOG_TRACE(log) << "Create histogram: \n" << histNorm.t();
 
         // Find threshold
         Kittler K;
@@ -536,6 +536,7 @@ bool clustering::lmclus::LMCLUS::findManifold(const arma::mat &data,
 {
     bool separated = false;
     while (true) {
+        LOG_DEBUG(log) << "lm_dim: "<< lm_dim;
         // find the best fit of a set of points to a linear manifold of dimensionality lm_dim
         Separation sep;
         if (lm_dim == 0) {
@@ -580,7 +581,7 @@ bool clustering::lmclus::LMCLUS::findManifold(const arma::mat &data,
         LOG_DEBUG(log) << "Separated points: "<< best_points.size();
         if (best_points.size() < params.NOISE_SIZE) {       // small amount of points is considered noise
             Noise=true;
-            LOG_INFO(log)<<"noise less than "<<params.NOISE_SIZE<<" points";
+            LOG_INFO(log)<<"cluster size is less then noise threshold: "<<params.NOISE_SIZE<<" points";
             break;
         }
         nonClusterPoints.insert (nonClusterPoints.end(), discard.begin(), discard.end());
@@ -621,7 +622,10 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
         engine.seed(seed);
     }
 
-    arma::uvec points_index = arma::linspace<arma::uvec>(0, data.n_rows, data.n_rows);
+    // Build index
+    arma::uvec points_index = arma::zeros<arma::uvec>(data.n_rows);
+    for (size_t i = 0; i < points_index.n_elem; ++i)
+        points_index[i] = i;
 
     int ClusterNum = 0;
     do {
@@ -629,7 +633,6 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
         bool Noise = false;
         std::vector<unsigned int> nonClusterPoints;
         int SepDim = 0;  // dimension in which separation was found
-
         // Bottom-up search for proper dimension
         for (int i = 1; i < params.MAX_DIM+1; i++) {
             if (findManifold(data, params, points_index, nonClusterPoints, best_sep, Noise, i))
@@ -662,9 +665,11 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
 
         // Realign basis of best separation
         if (params.ALIGN_BASIS){
-            auto manifold  = alignBasis(data, points_index, SepDim);
+            auto manifold  = alignBasis(data, points_index, SepDim == 0 ? 1 : SepDim);
             best_sep.set_projection(get<0>(manifold));
             best_sep.set_origin(get<1>(manifold));
+            //LOG_DEBUG(log)<< "Basis after alignment:" << best_sep.get_projection();
+            //LOG_DEBUG(log)<< "Origin after alignment:" << best_sep.get_origin();
         }
         separations.push_back(best_sep);
 
@@ -681,20 +686,20 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
     {
         // make basis for noise
         arma::mat basis;
-        arma::vec origin;
-        if (params.ALIGN_BASIS){
-            auto manifold  = alignBasis(data, points_index, 1);
-            basis = get<0>(manifold);
-            origin = get<1>(manifold);
-        } else {
+        arma::rowvec origin;
+        // if (params.ALIGN_BASIS){
+        //     auto manifold  = alignBasis(data, points_index, 1);
+        //     basis = get<0>(manifold);
+        //     origin = get<1>(manifold);
+        // } else {
             basis = arma::zeros<arma::mat>(1, params.MAX_DIM+1);
-            origin = arma::zeros<arma::vec>(1);
-        }
+            origin = arma::zeros<arma::rowvec>(1);
+        //}
 
         Separation sep(0., 0., 0.,
-            basis, origin,
+            origin, basis,
             arma::zeros<arma::vec>(1), 0,
-            arma::zeros<arma::rowvec>(0)
+            arma::zeros<arma::vec>(1)
             );
         clusterDims.push_back(0);
         labels.push_back(points_index);
@@ -705,34 +710,49 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
     return;
 }
 
-tuple<arma::mat, arma::vec> clustering::lmclus::LMCLUS::alignBasis(
+/* Performing PCA on cluster
+    data - MxN matrix
+    where  M - number of points in cluster, N - space dimensionality
+*/
+tuple<arma::mat, arma::rowvec> clustering::lmclus::LMCLUS::alignBasis(
     const arma::mat &data, const arma::uvec &labels, int d)
 {
     arma::mat cluster = data.rows(labels);
-    arma::vec origin = arma::mean( cluster, 2 );
+    arma::rowvec origin = arma::mean( cluster, 0 );
 
-    // remove mean from every point
+    // substract mean from every point
     for (size_t i = 0; i < cluster.n_rows; ++i)
         cluster.row(i) -= origin;
 
+    // arma::mat cov = (cluster.t()*cluster)/(cluster.n_rows-1);
+    // arma::vec eigval;
+    // arma::mat eigvec;
+    // arma::eig_sym(eigval, eigvec, cov);
+    // arma::uvec indices = sort_index(eigval, "descend");
+    // LOG_DEBUG(log) << "EVAL: " << eigval;
+    // LOG_DEBUG(log) << "EVEC:\n" << eigvec;
+    // LOG_DEBUG(log) << "IDX:\n" << indices.rows( 0, d-1 );
+    // arma::mat basis = eigvec.cols(indices.rows( 0, d-1 )).t();
+
     // Perform svd
+    cluster /= sqrt(cluster.n_rows-1);
     arma::mat U, V;
     arma::vec s;
     arma::svd(U, s, V, cluster);
+    arma::uvec indices = sort_index(s, "descend");
+    LOG_DEBUG(log) << "s: " << s.t();
+    LOG_DEBUG(log) << "U:\n" << U.t();
+    LOG_DEBUG(log) << "V:\n" << V.t();
+    arma::mat basis = V.cols( indices.rows( 0, d-1 ) ).t();
 
-    // get d largest eigenvalues
-    arma::uvec eigenval = sort_index(s, "descend");
-    auto pcs = eigenval.subvec( 0, d-1 );
-
-    return make_tuple(V.cols(pcs), origin);
+    return make_tuple(basis, origin);
 }
 
 arma::vec clustering::lmclus::LMCLUS::histBootstrapping(
     const arma::vec &distances, size_t bins)
 {
-
-    arma::vec dsorted = sort(distances);
     vector<size_t> counts;
+    arma::vec dsorted = sort(distances);
 
     // count points
     size_t i = 0;
@@ -740,33 +760,32 @@ arma::vec clustering::lmclus::LMCLUS::histBootstrapping(
     counts.push_back(1);
     i++;
     while (i < dsorted.n_elem){
-        if (p == dsorted[i]){
-            (*counts.end())++;
+        if ((dsorted[i] - p) < arma::datum::eps){
+            counts[counts.size()-1]++;
             dsorted.shed_row(i);
         } else {
             p = dsorted[i];
             i++;
+            counts.push_back(1);
         }
     }
+    assert(counts.size() == dsorted.n_elem);
 
-    size_t S = dsorted.n_elem;
-    size_t L = static_cast<size_t>(sqrt(S)/2.);
+    int S = dsorted.n_elem;
+    int L = static_cast<size_t>(sqrt(S)/2.);
     if (L < 1)
         return arma::mat();
 
     // generate a mass function
     arma::vec emf_x = arma::vec(S-2*L);
     arma::vec emf_y = arma::vec(S-2*L);
-    for (size_t i = L; i < S-L; i++){
+    for (int i = L; i < S-L; i++){
         emf_x[i-L] = dsorted[i];
         size_t c = 0; // Cout all points in interval
-        for (size_t j = -L; j <= L; j++)
+        for (int j = -L; j <= L; j++)
             c += counts[i+j];
         emf_y[i-L] = c/(dsorted[i+L]-dsorted[i-L]);
     }
-
-    LOG_DEBUG(log) << "EMF_X: "<<  emf_x;
-    LOG_DEBUG(log) << "EMF_Y: "<<  emf_y;
 
     // generate bins boundaries
     double min_d = emf_x[0], max_d = emf_x[emf_x.n_elem-1];
@@ -774,7 +793,6 @@ arma::vec clustering::lmclus::LMCLUS::histBootstrapping(
     for (size_t i = 0; i <= bins; i++){
         bbins[i] = min_d + i*(max_d-min_d)/bins;
     }
-    LOG_DEBUG(log) << "boundaries: "<<  bbins;
 
     // interpolate and integrate linear piecewise PDF
     double ilppdf, lx, ly, gx, gy;
@@ -795,7 +813,7 @@ arma::vec clustering::lmclus::LMCLUS::histBootstrapping(
     ilppdf += lppdf[bins];
     ilppdf *=(max_d-min_d)/(2*bins);
     lppdf /= ilppdf;
-    LOG_DEBUG(log) << "lppdf: "<<  lppdf;
+    lppdf /= arma::sum(lppdf);
 
-    return lppdf / arma::sum(lppdf);
+    return lppdf;
 }

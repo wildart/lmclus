@@ -92,7 +92,7 @@ public:
   }
 
   void set_origin(const arma::rowvec &o) {
-    origin = arma::mat(o);
+    origin = arma::rowvec(o);
   }
 
 	Separation(double w, double d, double thres, const arma::rowvec &org,
@@ -113,9 +113,9 @@ public:
 	Separation (int dim): sep_width(0.), sep_depth(0.),
 	    threshold(0.), global_min(0.), histogram(1), criteria(-1)
   {
-	    origin = arma::zeros(dim);
-	    projection = arma::zeros(1,dim);
-	    distances = arma::zeros(0);
+	    origin = arma::zeros<arma::rowvec>(dim);
+	    projection = arma::zeros<arma::mat>(1,dim);
+	    distances = arma::zeros<arma::vec>(0);
 	}
 
 	virtual ~Separation () {};
@@ -245,7 +245,7 @@ public:
                  callback_t progress = nullptr);
 
     arma::vec histBootstrapping(const arma::vec &distances, size_t bins);
-    tuple<arma::mat, arma::vec> alignBasis(const arma::mat &data, const arma::uvec &labels, int d);
+    tuple<arma::mat, arma::rowvec> alignBasis(const arma::mat &data, const arma::uvec &labels, int d);
 };
 
 } // lmclus namespace
