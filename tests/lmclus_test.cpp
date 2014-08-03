@@ -101,12 +101,13 @@ int main ( int argc, char *argv[] )
     params.HIS_THR = static_cast<unsigned int>(ini.GetLongValue(SECTION, "HIS_THR", 15));
     params.ZEROD_SEARCH = static_cast<bool>(ini.GetBoolValue(SECTION, "ZEROD_SEARCH", false));
     params.ALIGN_BASIS = static_cast<bool>(ini.GetBoolValue(SECTION, "ALIGN_BASIS", false));
+    params.DIM_ADJ = static_cast<bool>(ini.GetBoolValue(SECTION, "DIM_ADJ", false));
+    params.DIM_ADJ_RATIO = ini.GetDoubleValue(SECTION, "DIM_ADJ_RATIO", 0.99);
 
     // Load dataset
     arma::mat data;
     arma::vec original_labels;
     data.load(inputDataFile, arma::csv_ascii);
-    //data = arma::randu<arma::mat>(100,11);
     if (params.LABEL_COL > 0 && params.LABEL_COL <= data.n_cols){
         LOG_INFO(log) << "Labels in column " << params.LABEL_COL << " will be removed";
         original_labels = data.col(params.LABEL_COL-1);

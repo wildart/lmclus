@@ -155,6 +155,8 @@ struct Parameters
     size_t HIS_THR;
     bool ALIGN_BASIS;
     bool ZEROD_SEARCH;
+    bool DIM_ADJ;
+    double DIM_ADJ_RATIO;
 
     friend std::ostream & operator<<(std::ostream &o, Parameters &p)
     {
@@ -173,6 +175,8 @@ struct Parameters
         o<<"HIS_THR="<<p.HIS_THR<<std::endl;
         o<<"ALIGN_BASIS="<<p.ALIGN_BASIS<<std::endl;
         o<<"ZEROD_SEARCH="<<p.ZEROD_SEARCH<<std::endl;
+        o<<"DIM_ADJ="<<p.DIM_ADJ<<std::endl;
+        o<<"DIM_ADJ_RATIO="<<p.DIM_ADJ_RATIO<<std::endl;
         return o;
     }
 
@@ -245,7 +249,7 @@ public:
                  callback_t progress = nullptr);
 
     arma::vec histBootstrapping(const arma::vec &distances, size_t bins);
-    tuple<arma::mat, arma::rowvec> alignBasis(const arma::mat &data, const arma::uvec &labels, int d);
+    tuple<arma::mat, arma::rowvec, int> alignBasis(const arma::mat &data, const arma::uvec &labels, int d, double ratio);
 };
 
 } // lmclus namespace

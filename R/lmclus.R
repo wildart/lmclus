@@ -26,7 +26,9 @@ setClass(
 
         hisThreshold = "numeric",
         alignBasis = "logical",
-        zeroDimSearch = "logical"
+        zeroDimSearch = "logical",
+        dimAdjust = "logical",
+        dimAdjRatio = "numeric"
     ),
     prototype=prototype(
 
@@ -48,7 +50,9 @@ setClass(
 
         hisThreshold = 15,
         alignBasis = FALSE,
-        zeroDimSearch = FALSE
+        zeroDimSearch = FALSE,
+        dimAdjust = FALSE,
+        dimAdjRatio = 0.99
     )
 )
 
@@ -75,17 +79,20 @@ function (object)
     cat("Perform manifold basis alignment:" , object@alignBasis , "\n")
     cat("Perform 0D manifold search:" , object@zeroDimSearch , "\n")
 
+    cat("Manifold dimensionality adjustment:" , object@dimAdjust , "\n")
+    cat("Ratio of manifold principal subspace variance:" , object@dimAdjRatio , "\n")
+
     cat("Show log:" , object@showLog , "\n")
     cat("\n")
 })
 
 lmclusPure <- function(X, maxDim, numOfClus, noiseSize, bestBound, errorBound, maxBinPortion,
                        hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog,
-                       hisThr, algnBasis, zdSearch)
+                       hisThr, algnBasis, zdSearch, dimAdj, dimAdjRatio)
 {
     .Call("lmclus", X, maxDim, numOfClus, noiseSize, bestBound, errorBound, maxBinPortion,
           hisSampling, hisConstSize, sampleHeuristic, sampleFactor, randomSeed, showLog,
-          hisThr, algnBasis, zdSearch,
+          hisThr, algnBasis, zdSearch, dimAdj, dimAdjRatio,
           package = "lmclus")
 }
 
@@ -123,10 +130,13 @@ lmclus.default <- function(X, params, ...)
     hisThreshold <- as.integer(params@hisThreshold)
     alignBasis <- as.integer(params@alignBasis)
     zeroDimSearch <- as.integer(params@zeroDimSearch)
+    dimAdjust <- as.integer(params@dimAdjust)
+    dimAdjRatio <- as.double(params@dimAdjRatio)
 
     res <- lmclusPure(X, maxDim, numOfClus, noiseSize, bestBound, errorBound,
                     maxBinPortion, hisSampling, hisConstSize, sampleHeuristic,
-                    sampleFactor, randomSeed, showLog, hisThreshold, alignBasis, zeroDimSearch)
+                    sampleFactor, randomSeed, showLog, hisThreshold,
+                    alignBasis, zeroDimSearch, dimAdjust, dimAdjRatio)
 
     res$call <- match.call()
 

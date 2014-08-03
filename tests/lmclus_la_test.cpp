@@ -121,7 +121,7 @@ int main ( int argc, char *argv[] )
     for (size_t i = 0; i < points_index.n_elem; ++i)
         points_index[i] = i;
 
-    auto manifold  = lmclus.alignBasis(C, points_index, 2);
+    auto manifold  = lmclus.alignBasis(C, points_index, 2, 0.0);
     LOG_INFO(log) << "Basis:\n" << get<0>(manifold) << "\nOrigin:\n" << get<1>(manifold);
 
     return EXIT_SUCCESS;

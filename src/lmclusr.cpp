@@ -109,7 +109,7 @@ SEXP kittler(SEXP nH, SEXP minX, SEXP maxX) {
 SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound,
     SEXP errorBound, SEXP maxBinPortion, SEXP hisSampling, SEXP hisConstSize,
     SEXP sampleHeuristic, SEXP sampleFactor, SEXP randomSeed, SEXP showLog,
-    SEXP hisThr, SEXP algnBasis, SEXP zdSearch) {
+    SEXP hisThr, SEXP algnBasis, SEXP zdSearch, SEXP dimAdj, SEXP dimAdjRatio) {
 
     Rprintf("Linear manifold clustering...\n");
     int n, m, show_log, nprotect = 0;
@@ -130,8 +130,10 @@ SEXP lmclus(SEXP Xs, SEXP maxDim, SEXP numOfClus, SEXP noiseSize, SEXP bestBound
     params.SAMPLING_FACTOR = REAL(sampleFactor)[0];
     params.RANDOM_SEED = static_cast<unsigned int>(INTEGER(randomSeed)[0]);
     params.HIS_THR = INTEGER(hisThr)[0];
-    params.ALIGN_BASIS = INTEGER(algnBasis)[0];
-    params.ZEROD_SEARCH = INTEGER(zdSearch)[0];
+    params.ZEROD_SEARCH = static_cast<bool>(INTEGER(zdSearch)[0]);
+    params.ALIGN_BASIS = static_cast<bool>(INTEGER(algnBasis)[0]);
+    params.DIM_ADJ = static_cast<bool>(INTEGER(dimAdj)[0]);
+    params.DIM_ADJ_RATIO = REAL(dimAdjRatio)[0];
 
     show_log = INTEGER(showLog)[0];
     cpplog::BaseLogger *log;

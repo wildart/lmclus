@@ -641,7 +641,7 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
         }
 
         // Top-down search for embedded manifolds
-        if (SepDim>0 && params.ZEROD_SEARCH) {
+        if (SepDim > 0 && params.ZEROD_SEARCH) {
             LOG_DEBUG(log) << "Top-Down search d=" << SepDim-1;
             if (findManifold(data, params, points_index, nonClusterPoints, best_sep, Noise, SepDim-1)) {
                 SepDim--;
@@ -652,25 +652,31 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
             }
         }
 
-        // second phase (steps 9-12)
+        // Realign basis of best separation
+        if (params.ALIGN_BASIS){
+            LOG_DEBUG(log)<<  "Adjusting basis....";
+            int dim = params.DIM_ADJ ? data.n_cols-1 : (SepDim == 0 ? 1 : SepDim);
+            double ratio = params.DIM_ADJ ? params.DIM_ADJ_RATIO : 0.0;
+            auto manifold  = alignBasis(data, points_index, dim, ratio);
+            best_sep.set_projection(get<0>(manifold));
+            best_sep.set_origin(get<1>(manifold));
+            if (SepDim != get<2>(manifold)) {
+                LOG_DEBUG(log)<<  "Manifold dimesnon adjusted: " << SepDim << " => " << get<2>(manifold);
+                SepDim = get<2>(manifold);
+            }
+            //LOG_DEBUG(log)<< "Basis after alignment:" << best_sep.get_projection();
+            //LOG_DEBUG(log)<< "Origin after alignment:" << best_sep.get_origin();
+        }
+
+        // form cluster
         ClusterNum++;
         std::string msg("found cluster # "+to_string(ClusterNum)+
             ", size="+to_string(points_index.n_rows)+", dim="+to_string(SepDim));
         LOG_INFO(log)<<msg;
         if (progress != nullptr)
             progress(msg.c_str());
-
-        clusterDims.push_back(SepDim);
         labels.push_back(points_index);
-
-        // Realign basis of best separation
-        if (params.ALIGN_BASIS){
-            auto manifold  = alignBasis(data, points_index, SepDim == 0 ? 1 : SepDim);
-            best_sep.set_projection(get<0>(manifold));
-            best_sep.set_origin(get<1>(manifold));
-            //LOG_DEBUG(log)<< "Basis after alignment:" << best_sep.get_projection();
-            //LOG_DEBUG(log)<< "Origin after alignment:" << best_sep.get_origin();
-        }
+        clusterDims.push_back(SepDim);
         separations.push_back(best_sep);
 
         // separate cluster points from the rest of the data
@@ -714,8 +720,8 @@ void clustering::lmclus::LMCLUS::cluster(const arma::mat &data,
     data - MxN matrix
     where  M - number of points in cluster, N - space dimensionality
 */
-tuple<arma::mat, arma::rowvec> clustering::lmclus::LMCLUS::alignBasis(
-    const arma::mat &data, const arma::uvec &labels, int d)
+tuple<arma::mat, arma::rowvec, int> clustering::lmclus::LMCLUS::alignBasis(
+    const arma::mat &data, const arma::uvec &labels, int d, double ratio)
 {
     arma::mat cluster = data.rows(labels);
     arma::rowvec origin = arma::mean( cluster, 0 );
@@ -743,9 +749,22 @@ tuple<arma::mat, arma::rowvec> clustering::lmclus::LMCLUS::alignBasis(
     LOG_DEBUG(log) << "s: " << s.t();
     LOG_DEBUG(log) << "U:\n" << U.t();
     LOG_DEBUG(log) << "V:\n" << V.t();
-    arma::mat basis = V.cols( indices.rows( 0, d-1 ) ).t();
 
-    return make_tuple(basis, origin);
+
+    // Adjust dimensionality
+    double thresh = arma::sum(s) * ratio;
+    if (ratio > 0.0) {
+        d = 0;
+        double a =  s[d];
+        while (a < thresh) {
+            d++;
+            a += s[d];
+        }
+        d++;
+    }
+
+    arma::mat basis = V.cols( indices.rows( 0, d-1 ) ).t();
+    return make_tuple(basis, origin, d);
 }
 
 arma::vec clustering::lmclus::LMCLUS::histBootstrapping(

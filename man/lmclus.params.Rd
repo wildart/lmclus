@@ -19,6 +19,11 @@ This class holds parameters for Linear Manifold Clustering method (\link{lmclus}
 \code{sampleFactor = ...., # Sampling factor}\cr
 \code{randomSeed = ...., # RNG seed}\cr
 \code{showLog = ...., # Show execution log}\cr
+\code{hisThreshold = ...., # Histogram bootstrapping threshold}\cr
+\code{zeroDimSearch = ...., # Perform 0D manifold search}\cr
+\code{alignBasis = ...., # Perform manifold basis alignment}\cr
+\code{dimAdjust = ...., # Manifold dimensionality adjustment}\cr
+\code{dimAdjRatio = ...., # Adjustment ratio}\cr
 \code{)}}
 
 \section{Slots}{
@@ -35,6 +40,12 @@ This class holds parameters for Linear Manifold Clustering method (\link{lmclus}
 \item{\code{sampleFactor}:}{Value will be multiplied by the number of points in the dataset for heuristic 3.}
 \item{\code{randomSeed}:}{Specifies a random generator seed.}
 \item{\code{showLog}:}{Show execution log.}
+
+\item{\code{hisThreshold}:}{Histogram bootstrapping threshold.}
+\item{\code{zeroDimSearch}:}{Perform 0D manifold search.}
+\item{\code{alignBasis}:}{Perform manifold basis alignment.}
+\item{\code{dimAdjust}:}{Manifold dimensionality adjustment.}
+\item{\code{dimAdjRatio}:}{Ratio of manifold principal subspace variance.}
 }
 }
 
@@ -51,7 +62,12 @@ This class holds parameters for Linear Manifold Clustering method (\link{lmclus}
 \item{integer sampleHeuristic}{ = 3 }
 \item{double sampleFactor}{ = 0.003 }
 \item{integer randomSeed}{ = 0 }
+\item{logical hisThreshold}{ = 15 }
 \item{logical showLog}{ = FALSE }
+\item{logical zeroDimSearch}{ = FALSE }
+\item{logical alignBasis}{ = FALSE }
+\item{logical dimAdjust}{ = FALSE }
+\item{double dimAdjRatio}{ = 0.99 }
 }
 }
 \keyword{ parameters }
